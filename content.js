@@ -1,63 +1,59 @@
 // GopherTranscript (unofficial)
-// Runs on UNITE player pages. The video player already downloads the
+// Copyright (c) 2026 Eric He. MIT License (see LICENSE).
+//
+// Lecture pages (player.php): the video player already downloads the
 // lecture's captions (WebVTT, split into ~5 minute chunks behind an .m3u8
 // playlist). This script finds that playlist, fetches the same chunks the
 // player uses, stitches them together, and lets you save the result.
+//
+// Course pages (course.php): "Save all" opens each lecture's player page in
+// a hidden frame, one at a time, picks up its caption playlist the same way,
+// and bundles every transcript into a single .zip.
+//
 // Nothing is sent anywhere else, and no login details are touched.
 
 (() => {
-  if (window.__ltsLoaded) return;
-  window.__ltsLoaded = true;
+  if (window.__gtLoaded) return;
+  window.__gtLoaded = true;
 
-  const PAUSE_BETWEEN_REQUESTS_MS = 250; // be gentle with the servers
+  const PAUSE_BETWEEN_REQUESTS_MS = 250; // between caption chunks
+  const PAUSE_BETWEEN_LECTURES_MS = 1000; // between lectures in "Save all"
+  const LECTURE_LOAD_TIMEOUT_MS = 20000;
   const PLAYLIST_RE = /serveWebVTT.*\.m3u8(\?|$)/;
   const PARAGRAPH_MAX_SECONDS = 60;
   const PARAGRAPH_GAP_SECONDS = 4;
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const isPlayerPage = /\/portal\/player\.php$/.test(location.pathname);
+  const isCoursePage = /\/portal\/course\.php$/.test(location.pathname);
+  if (!isPlayerPage && !isCoursePage) return;
 
-  // ---- 1. Watch for the caption playlist the player requests ------------
+  // ---- Captions: fetch and parse ------------------------------------------
 
-  let playlistUrl = null;
-  const playlistWaiters = [];
-
-  function notePlaylist(url) {
-    if (playlistUrl || !PLAYLIST_RE.test(url)) return;
-    playlistUrl = url;
-    playlistWaiters.splice(0).forEach((resolve) => resolve(url));
-  }
-
-  try {
-    // Video segments fill the default 250-entry buffer quickly.
-    performance.setResourceTimingBufferSize(5000);
-    performance.getEntriesByType("resource").forEach((e) => notePlaylist(e.name));
-    new PerformanceObserver((list) => {
-      list.getEntries().forEach((e) => notePlaylist(e.name));
-    }).observe({ type: "resource", buffered: true });
-  } catch (_) {
-    /* older browsers: we still check getEntriesByType on click */
-  }
-
-  function waitForPlaylist(timeoutMs) {
-    if (!playlistUrl) {
-      const found = performance
+  function findPlaylistIn(win) {
+    return (
+      win.performance
         .getEntriesByType("resource")
         .map((e) => e.name)
-        .find((n) => PLAYLIST_RE.test(n));
-      if (found) notePlaylist(found);
-    }
-    if (playlistUrl) return Promise.resolve(playlistUrl);
-    return new Promise((resolve) => {
-      playlistWaiters.push(resolve);
-      setTimeout(() => resolve(playlistUrl), timeoutMs);
-    });
+        .find((n) => PLAYLIST_RE.test(n)) || null
+    );
   }
 
-  // ---- 2. Fetch and parse the captions ----------------------------------
+  function playerTitleIn(win) {
+    try {
+      const players = win.KalturaPlayer?.getPlayers?.() || {};
+      const name = Object.values(players)[0]?.sources?.metadata?.name;
+      if (name) return name.trim();
+    } catch (_) {}
+    return null;
+  }
 
   function toSeconds(ts) {
-    const parts = ts.trim().split(":").map(Number);
-    return parts.reduce((total, p) => total * 60 + p, 0);
+    return ts
+      .trim()
+      .split(":")
+      .map(Number)
+      .reduce((total, p) => total * 60 + p, 0);
   }
 
   function formatClock(seconds) {
@@ -111,7 +107,7 @@
     const seen = new Set();
     const cues = [];
     for (let i = 0; i < segmentUrls.length; i++) {
-      onProgress(`Downloading captions ${i + 1} of ${segmentUrls.length}…`);
+      onProgress(i + 1, segmentUrls.length);
       const segRes = await fetch(segmentUrls[i]);
       if (!segRes.ok) throw new Error(`caption part ${i + 1} failed (${segRes.status})`);
       for (const cue of parseVtt(await segRes.text())) {
@@ -126,19 +122,9 @@
     return cues;
   }
 
-  // ---- 3. Build the output files ----------------------------------------
+  // ---- Output formats -----------------------------------------------------
 
-  function lectureTitle() {
-    try {
-      const players = window.KalturaPlayer?.getPlayers?.() || {};
-      const name = Object.values(players)[0]?.sources?.metadata?.name;
-      if (name) return name.trim();
-    } catch (_) {}
-    const id = new URLSearchParams(location.search).get("media_id");
-    return `UNITE lecture ${id || ""}`.trim();
-  }
-
-  function buildTranscript(title, cues) {
+  function buildTranscript(title, cues, pageUrl) {
     const paragraphs = [];
     let current = null;
     for (const cue of cues) {
@@ -156,9 +142,7 @@
     const header = [
       title,
       "Transcript from the video's auto-generated captions, which may contain errors.",
-      `Saved ${new Date().toLocaleString()} from ${location.origin}${location.pathname}?media_id=${
-        new URLSearchParams(location.search).get("media_id") || ""
-      }`,
+      `Saved ${new Date().toLocaleString()} from ${pageUrl}`,
     ];
     const body = paragraphs.map((p) => `[${formatClock(p.start)}] ${p.words.join(" ")}`);
     return header.join("\n") + "\n\n" + body.join("\n\n") + "\n";
@@ -182,40 +166,116 @@
   }
 
   function safeFileName(title) {
-    return title.replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, " ").trim().slice(0, 120) || "lecture";
+    return (
+      title.replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, " ").trim().slice(0, 120) || "lecture"
+    );
   }
 
-  function saveFile(name, text, type) {
-    const url = URL.createObjectURL(new Blob([text], { type }));
+  function lecturePageUrl(href) {
+    const u = new URL(href, location.href);
+    return `${u.origin}${u.pathname}?media_id=${u.searchParams.get("media_id") || ""}`;
+  }
+
+  function saveBlob(name, blob) {
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = name;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
 
-  // ---- 4. The on-page panel ----------------------------------------------
-
-  let cachedCues = null;
-
-  async function getCues(setStatus) {
-    if (cachedCues) return cachedCues;
-    setStatus("Looking for this lecture's captions…");
-    const url = await waitForPlaylist(15000);
-    if (!url) {
-      throw new Error(
-        "no captions found yet. Press play for a few seconds and try again. " +
-          "If this lecture has no captions, the Disability Resource Center can request them."
-      );
+  // ---- Minimal .zip writer (no compression; text files are small) --------
+  // ZIP-START
+  const CRC_TABLE = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
     }
-    cachedCues = await fetchAllCues(url, setStatus);
-    if (cachedCues.length === 0) throw new Error("the captions for this lecture are empty");
-    return cachedCues;
+    return t;
+  })();
+
+  function crc32(bytes) {
+    let c = 0xffffffff;
+    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
   }
 
-  function buildPanel() {
+  // files: [{ name: string, text: string }] -> Uint8Array of a .zip archive
+  function makeZip(files, date = new Date()) {
+    const enc = new TextEncoder();
+    const dosTime =
+      (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
+    const dosDate =
+      (Math.max(date.getFullYear() - 1980, 0) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
+
+    const chunks = [];
+    const central = [];
+    let offset = 0;
+
+    for (const file of files) {
+      const name = enc.encode(file.name);
+      const data = enc.encode(file.text);
+      const crc = crc32(data);
+
+      const local = new DataView(new ArrayBuffer(30));
+      local.setUint32(0, 0x04034b50, true);
+      local.setUint16(4, 20, true);
+      local.setUint16(6, 0x0800, true); // UTF-8 file names
+      local.setUint16(8, 0, true); // stored
+      local.setUint16(10, dosTime, true);
+      local.setUint16(12, dosDate, true);
+      local.setUint32(14, crc, true);
+      local.setUint32(18, data.length, true);
+      local.setUint32(22, data.length, true);
+      local.setUint16(26, name.length, true);
+      local.setUint16(28, 0, true);
+      chunks.push(new Uint8Array(local.buffer), name, data);
+
+      const cd = new DataView(new ArrayBuffer(46));
+      cd.setUint32(0, 0x02014b50, true);
+      cd.setUint16(4, 20, true);
+      cd.setUint16(6, 20, true);
+      cd.setUint16(8, 0x0800, true);
+      cd.setUint16(10, 0, true);
+      cd.setUint16(12, dosTime, true);
+      cd.setUint16(14, dosDate, true);
+      cd.setUint32(16, crc, true);
+      cd.setUint32(20, data.length, true);
+      cd.setUint32(24, data.length, true);
+      cd.setUint16(28, name.length, true);
+      cd.setUint32(42, offset, true);
+      central.push(new Uint8Array(cd.buffer), name);
+
+      offset += 30 + name.length + data.length;
+    }
+
+    const cdSize = central.reduce((n, c) => n + c.length, 0);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true);
+    end.setUint16(8, files.length, true);
+    end.setUint16(10, files.length, true);
+    end.setUint32(12, cdSize, true);
+    end.setUint32(16, offset, true);
+
+    const all = [...chunks, ...central, new Uint8Array(end.buffer)];
+    const out = new Uint8Array(all.reduce((n, c) => n + c.length, 0));
+    let pos = 0;
+    for (const c of all) {
+      out.set(c, pos);
+      pos += c.length;
+    }
+    return out;
+  }
+  // ZIP-END
+
+  // ---- Panel UI -----------------------------------------------------------
+
+  function createPanel(heading, innerHtml) {
     const host = document.createElement("div");
     host.id = "gophertranscript-panel";
     host.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:2147483647;";
@@ -223,61 +283,261 @@
     root.innerHTML = `
       <style>
         .panel { font: 14px/1.4 system-ui, -apple-system, sans-serif; background:#fff; color:#1a1a1a;
-                 border:1px solid #c9c9c9; border-radius:10px; padding:12px; width:260px;
-                 box-shadow:0 4px 16px rgba(0,0,0,.18); }
+                 border:1px solid #c9c9c9; border-radius:10px; padding:12px; width:280px;
+                 box-shadow:0 4px 16px rgba(0,0,0,.18); position:relative; }
         h2 { font-size:14px; margin:0 0 8px; }
         .row { display:flex; gap:8px; }
         button { flex:1; font:inherit; padding:8px 6px; border-radius:6px; cursor:pointer;
                  border:1px solid #7a0019; background:#7a0019; color:#fff; }
         button.secondary { background:#fff; color:#7a0019; }
         button:disabled { opacity:.6; cursor:progress; }
-        button:focus-visible { outline:3px solid #ffb71e; outline-offset:2px; }
+        button:focus-visible, input:focus-visible { outline:3px solid #ffb71e; outline-offset:2px; }
+        label { display:flex; gap:6px; align-items:center; font-size:13px; margin-top:8px; }
         .status { margin-top:8px; font-size:13px; color:#444; min-height:1em; }
         .close { position:absolute; top:4px; right:8px; flex:none; background:none; border:none;
                  color:#666; font-size:18px; padding:2px 6px; }
+        [hidden] { display:none !important; }
       </style>
-      <div class="panel" role="region" aria-label="Lecture transcript">
+      <div class="panel" role="region" aria-label="${heading}">
         <button class="close" aria-label="Hide transcript panel">×</button>
-        <h2>Save transcript</h2>
-        <div class="row">
-          <button class="txt">Text (.txt)</button>
-          <button class="vtt secondary">Captions (.vtt)</button>
-        </div>
+        <h2>${heading}</h2>
+        ${innerHtml}
         <div class="status" role="status" aria-live="polite"></div>
       </div>`;
-
-    const status = root.querySelector(".status");
-    const buttons = [...root.querySelectorAll(".row button")];
-    const setStatus = (msg) => (status.textContent = msg);
-
-    async function run(kind) {
-      buttons.forEach((b) => (b.disabled = true));
-      try {
-        const cues = await getCues(setStatus);
-        const title = lectureTitle();
-        const base = safeFileName(title);
-        if (kind === "txt") {
-          saveFile(`${base}.txt`, buildTranscript(title, cues), "text/plain;charset=utf-8");
-        } else {
-          saveFile(`${base}.vtt`, buildVtt(cues), "text/vtt;charset=utf-8");
-        }
-        setStatus(`Saved ${cues.length} caption lines.`);
-      } catch (err) {
-        setStatus(`Couldn't save: ${err.message}`);
-      } finally {
-        buttons.forEach((b) => (b.disabled = false));
-      }
-    }
-
-    root.querySelector(".txt").addEventListener("click", () => run("txt"));
-    root.querySelector(".vtt").addEventListener("click", () => run("vtt"));
     root.querySelector(".close").addEventListener("click", () => host.remove());
     document.body.appendChild(host);
+    const status = root.querySelector(".status");
+    return { root, setStatus: (msg) => (status.textContent = msg) };
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", buildPanel);
-  } else {
-    buildPanel();
+  // ---- Lecture page: save this lecture ------------------------------------
+
+  function setUpPlayerPage() {
+    let playlistUrl = null;
+    const waiters = [];
+    const note = (url) => {
+      if (playlistUrl || !PLAYLIST_RE.test(url)) return;
+      playlistUrl = url;
+      waiters.splice(0).forEach((resolve) => resolve(url));
+    };
+    try {
+      // Video segments fill the default 250-entry buffer quickly.
+      performance.setResourceTimingBufferSize(5000);
+      new PerformanceObserver((list) => list.getEntries().forEach((e) => note(e.name))).observe({
+        type: "resource",
+        buffered: true,
+      });
+    } catch (_) {}
+
+    function waitForPlaylist(timeoutMs) {
+      if (!playlistUrl) {
+        const found = findPlaylistIn(window);
+        if (found) note(found);
+      }
+      if (playlistUrl) return Promise.resolve(playlistUrl);
+      return new Promise((resolve) => {
+        waiters.push(resolve);
+        setTimeout(() => resolve(playlistUrl), timeoutMs);
+      });
+    }
+
+    let cachedCues = null;
+
+    function start() {
+      const { root, setStatus } = createPanel(
+        "Save transcript",
+        `<div class="row">
+           <button class="txt">Text (.txt)</button>
+           <button class="vtt secondary">Captions (.vtt)</button>
+         </div>`
+      );
+      const buttons = [...root.querySelectorAll(".row button")];
+
+      async function run(kind) {
+        buttons.forEach((b) => (b.disabled = true));
+        try {
+          if (!cachedCues) {
+            setStatus("Looking for this lecture's captions…");
+            const url = await waitForPlaylist(15000);
+            if (!url) {
+              throw new Error(
+                "no captions found yet. Press play for a few seconds and try again. " +
+                  "If this lecture has no captions, the Disability Resource Center can request them."
+              );
+            }
+            cachedCues = await fetchAllCues(url, (i, n) =>
+              setStatus(`Downloading captions ${i} of ${n}…`)
+            );
+            if (cachedCues.length === 0) throw new Error("the captions for this lecture are empty");
+          }
+          const title =
+            playerTitleIn(window) ||
+            `UNITE lecture ${new URLSearchParams(location.search).get("media_id") || ""}`.trim();
+          const base = safeFileName(title);
+          if (kind === "txt") {
+            const text = buildTranscript(title, cachedCues, lecturePageUrl(location.href));
+            saveBlob(`${base}.txt`, new Blob([text], { type: "text/plain;charset=utf-8" }));
+          } else {
+            saveBlob(`${base}.vtt`, new Blob([buildVtt(cachedCues)], { type: "text/vtt;charset=utf-8" }));
+          }
+          setStatus(`Saved ${cachedCues.length} caption lines.`);
+        } catch (err) {
+          setStatus(`Couldn't save: ${err.message}`);
+        } finally {
+          buttons.forEach((b) => (b.disabled = false));
+        }
+      }
+
+      root.querySelector(".txt").addEventListener("click", () => run("txt"));
+      root.querySelector(".vtt").addEventListener("click", () => run("vtt"));
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+    else start();
   }
+
+  // ---- Course page: save every lecture ------------------------------------
+
+  // Opens one lecture's player page in a hidden frame and waits for it to
+  // request its caption playlist. Videos stay paused and muted.
+  function loadLectureInFrame(href, timeoutMs) {
+    return new Promise((resolve) => {
+      const frame = document.createElement("iframe");
+      frame.setAttribute("aria-hidden", "true");
+      frame.tabIndex = -1;
+      frame.style.cssText =
+        "position:fixed;left:-10000px;top:0;width:640px;height:360px;border:0;visibility:hidden;";
+      frame.src = href;
+      const startedAt = Date.now();
+      let title = null;
+
+      const finish = (playlistUrl) => {
+        clearInterval(timer);
+        frame.remove();
+        resolve({ playlistUrl, title });
+      };
+
+      const timer = setInterval(() => {
+        try {
+          const win = frame.contentWindow;
+          if (win) {
+            win.document.querySelectorAll("video").forEach((v) => {
+              v.muted = true;
+              if (!v.paused) v.pause();
+            });
+            title = playerTitleIn(win) || title;
+            const found = findPlaylistIn(win);
+            if (found) {
+              // Give the title a moment to show up if it hasn't yet.
+              if (title || Date.now() - startedAt > 4000) return finish(found);
+            }
+          }
+        } catch (_) {
+          /* frame still loading */
+        }
+        if (Date.now() - startedAt > timeoutMs) finish(null);
+      }, 400);
+
+      document.body.appendChild(frame);
+    });
+  }
+
+  function setUpCoursePage() {
+    function start() {
+      const seen = new Set();
+      const lectures = [...document.querySelectorAll('a[href*="player.php?media_id="]')]
+        .filter((a) => a.textContent.trim() && !seen.has(a.href) && seen.add(a.href))
+        .map((a) => ({ href: a.href, label: a.textContent.trim() }))
+        .reverse(); // page lists newest first; save oldest first
+      if (lectures.length === 0) return;
+
+      const courseTitle = document.title.replace(/:\s*UNITE Videos\s*$/i, "").trim() || "UNITE course";
+
+      const { root, setStatus } = createPanel(
+        "Save all transcripts",
+        `<div class="row">
+           <button class="all">Save all ${lectures.length} lectures (.zip)</button>
+           <button class="cancel secondary" hidden>Stop</button>
+         </div>
+         <label><input type="checkbox" class="withVtt"> Also include .vtt caption files</label>`
+      );
+      const allBtn = root.querySelector(".all");
+      const cancelBtn = root.querySelector(".cancel");
+      const withVtt = root.querySelector(".withVtt");
+      let cancelled = false;
+
+      cancelBtn.addEventListener("click", () => {
+        cancelled = true;
+        cancelBtn.disabled = true;
+        setStatus("Stopping after this lecture…");
+      });
+
+      allBtn.addEventListener("click", async () => {
+        cancelled = false;
+        allBtn.disabled = true;
+        withVtt.disabled = true;
+        cancelBtn.hidden = false;
+        cancelBtn.disabled = false;
+
+        const files = [];
+        const missing = [];
+        let saved = 0;
+
+        for (let i = 0; i < lectures.length && !cancelled; i++) {
+          const lec = lectures[i];
+          const prefix = `Lecture ${i + 1} of ${lectures.length} (${lec.label})`;
+          setStatus(`${prefix}: opening…`);
+          try {
+            const { playlistUrl, title: playerTitle } = await loadLectureInFrame(
+              lec.href,
+              LECTURE_LOAD_TIMEOUT_MS
+            );
+            if (!playlistUrl) throw new Error("no captions found");
+            const cues = await fetchAllCues(playlistUrl, (k, n) =>
+              setStatus(`${prefix}: captions ${k} of ${n}…`)
+            );
+            if (cues.length === 0) throw new Error("captions are empty");
+            const title = playerTitle || `${courseTitle} ${lec.label}`;
+            const base = `${String(i + 1).padStart(2, "0")} ${safeFileName(title)}`;
+            files.push({ name: `${base}.txt`, text: buildTranscript(title, cues, lecturePageUrl(lec.href)) });
+            if (withVtt.checked) files.push({ name: `${base}.vtt`, text: buildVtt(cues) });
+            saved++;
+          } catch (err) {
+            missing.push(`${lec.label}: ${err.message} (${lecturePageUrl(lec.href)})`);
+          }
+          if (i < lectures.length - 1 && !cancelled) await sleep(PAUSE_BETWEEN_LECTURES_MS);
+        }
+
+        if (missing.length) {
+          files.push({
+            name: "_skipped lectures.txt",
+            text:
+              "These lectures had no captions GopherTranscript could find.\n" +
+              "The Disability Resource Center can request captions for them.\n\n" +
+              missing.join("\n") +
+              "\n",
+          });
+        }
+
+        if (saved > 0) {
+          const zip = makeZip(files);
+          saveBlob(`${safeFileName(courseTitle)} transcripts.zip`, new Blob([zip], { type: "application/zip" }));
+          const skippedNote = missing.length ? `, skipped ${missing.length}` : "";
+          setStatus(`${cancelled ? "Stopped. " : ""}Saved ${saved} of ${lectures.length} lectures${skippedNote}.`);
+        } else {
+          setStatus(cancelled ? "Stopped before any lectures were saved." : "Couldn't find captions for any lectures.");
+        }
+
+        allBtn.disabled = false;
+        withVtt.disabled = false;
+        cancelBtn.hidden = true;
+      });
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+    else start();
+  }
+
+  if (isPlayerPage) setUpPlayerPage();
+  if (isCoursePage) setUpCoursePage();
 })();

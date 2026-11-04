@@ -8,12 +8,19 @@ UNITE videos come with auto-generated captions, and the player shows a searchabl
 
 ## What it does
 
-On any `media.unite.umn.edu/portal/player.php` page, a small panel appears in the bottom-right corner:
+**On a lecture page** (`media.unite.umn.edu/portal/player.php`), a small panel appears in the bottom-right corner:
 
 - **Text (.txt)** saves a transcript in paragraphs, with a timestamp at the start of each one.
 - **Captions (.vtt)** saves the full caption file with timings, which works in VLC and most video players and note apps.
 
 Files are named after the lecture, for example `CSCI 2033-1 November 4 Lecture (multi-source).txt`.
+
+**On a course page** (`media.unite.umn.edu/portal/course.php`, the list of all lectures), the panel offers **Save all lectures (.zip)**:
+
+- It goes through every lecture on the page, oldest first, and saves one `.zip` with a numbered transcript for each, like `01 CSCI 2033-1 September 9 Lecture (multi-source).txt`.
+- Tick **Also include .vtt caption files** to get the caption files too.
+- A full semester takes a few minutes. You can keep using other tabs, and **Stop** saves whatever is done so far.
+- Lectures without captions are listed in `_skipped lectures.txt` inside the zip.
 
 ## Install
 
@@ -30,7 +37,8 @@ If it says no captions were found, press play for a few seconds and try again.
 - It needs **no extension permissions** and never sees your password. You log in to UNITE the normal way.
 - The video player already downloads the captions in roughly 5-minute pieces. The extension reads which caption file the player asked for, downloads those same pieces, joins them, and saves the result to your computer.
 - Nothing is sent anywhere except UNITE's own caption server, and only when you click a button. There's no tracking or analytics.
-- It pauses between requests so it doesn't put extra load on the servers.
+- **Save all** opens each lecture's page in a hidden frame, one at a time, just long enough for the player to load its captions. Videos stay paused and muted, and the frame is closed right after.
+- It pauses between requests and between lectures so it doesn't put extra load on the servers.
 
 ## Ground rules
 
@@ -46,8 +54,8 @@ UNITE uses Kaltura's video player. If they change how captions are loaded, the e
 
 Pull requests are welcome. Please keep it permission-free and local-only. Some ideas:
 
-- A "save all lectures" button on the course page
 - Better paragraph and sentence splitting
+- A "Save all" button on the UNITE home page that covers every course
 - Firefox support
 
 ## License
