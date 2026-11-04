@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GopherTranscript</title>
-<meta name="description" content="Save transcripts of your UNITE lecture videos, one lecture or a whole course at a time. Unofficial, for personal accessibility use.">
+<meta name="description" content="Save transcripts of your UNITE and Canvas lecture videos. Unofficial, for personal accessibility use.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Caveat:wght@600&display=swap" rel="stylesheet">
@@ -126,6 +126,14 @@
   .gt-status { margin-top: 8px; font-size: 13px; color: #444; }
   .gt-close { position: absolute; top: 4px; right: 10px; color: #666; font-size: 18px; }
   .mock-page .gt-panel { position: absolute; right: 12px; bottom: 12px; }
+  .gt-panel.wide { width: 320px; }
+  .gt-panel h3 { margin-right: 24px; }
+  .gt-hint { font-size: 13px; color: #444; margin: 0 0 8px; }
+  .gt-source { font-size: 12px; color: #666; margin: -4px 0 8px; }
+  .gt-videos { list-style: none; margin: 0; padding: 0; }
+  .gt-videos li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid #e6e6e6; }
+  .gt-vtitle { flex: 1; font-size: 13px; overflow-wrap: anywhere; }
+  .gt-open { flex: none; font-size: 13px; font-weight: 600; color: #fff; background: #7a0019; border-radius: 6px; padding: 6px 10px; }
 
   /* Full view */
   .full { border-top: 1px solid var(--board-edge); padding: 3.5rem 0 1rem; }
@@ -152,7 +160,7 @@
     .mock-row { grid-template-columns: 4.5rem 1fr; }
     .mock-thumb { height: 2.6rem; }
     .mock-page .gt-panel { width: auto; left: 12px; }
-    .gt-panel { width: 100%; max-width: 280px; }
+    .gt-panel, .gt-panel.wide { width: 100%; max-width: 320px; }
   }
   @media (prefers-reduced-motion: no-preference) {
     .bookmarklet { transition: transform 120ms ease; }
@@ -174,8 +182,8 @@
 <main class="wrap">
   <section class="hero">
     <div>
-      <h1>Save your UNITE lectures as text</h1>
-      <p class="lede">Get a readable transcript of any UNITE lecture video, or every lecture in a course in one download. Good for screen readers, text-to-speech, translation, and searching your notes.</p>
+      <h1>Save your lecture videos as text</h1>
+      <p class="lede">Get a readable transcript of lecture videos on UNITE and Canvas, or every UNITE lecture in a course in one download. Good for screen readers, text-to-speech, translation, and searching your notes.</p>
 
       <h2>Get started</h2>
       <ol class="steps">
@@ -202,8 +210,8 @@
             </ol>
           </details>
         </li>
-        <li>Go to <a href="https://media.unite.umn.edu/portal/index.php">your UNITE courses</a>, log in, and open a course.</li>
-        <li>Click <strong>GopherTranscript</strong> in your bookmarks bar. Press <strong>Save all</strong> for the whole course, or open a single lecture and click it there to save just that one.</li>
+        <li>Log in and open a lecture on <a href="https://media.unite.umn.edu/portal/index.php">UNITE</a> or <a href="https://canvas.umn.edu/">Canvas</a>.</li>
+        <li>Click <strong>GopherTranscript</strong> in your bookmarks bar. On UNITE you can save a whole course at once; on Canvas it's one video at a time. See <a href="#unite">UNITE steps</a> and <a href="#canvas">Canvas steps</a> below.</li>
       </ol>
     </div>
 
@@ -227,8 +235,8 @@
     </figure>
   </section>
 
-  <section class="full" aria-labelledby="full-heading">
-    <h2 id="full-heading">The panel, up close</h2>
+  <section class="full" id="unite" aria-labelledby="unite-heading">
+    <h2 id="unite-heading">On UNITE</h2>
     <p class="intro">The panel changes depending on which UNITE page you're on. You can close it with × and bring it back by clicking the bookmark again.</p>
     <div class="states">
       <div class="state">
@@ -259,12 +267,44 @@
     </div>
   </section>
 
+  <section class="full" id="canvas" aria-labelledby="canvas-heading">
+    <h2 id="canvas-heading">On Canvas</h2>
+    <p class="intro">For lecture videos posted on Canvas pages, like a week's lecture links. Canvas keeps each video in a protected frame, so saving one takes two clicks, and there's no Save all on Canvas.</p>
+    <div class="states">
+      <div class="state">
+        <h3>First, on the Canvas page</h3>
+        <p>Click <strong>GopherTranscript</strong>. The panel lists the videos on that page. Press <strong>Open video</strong> next to the one you want, and it opens by itself in a new tab.</p>
+        <div class="stage">
+          <div class="gt-panel wide" aria-hidden="true">
+            <span class="gt-close">×</span>
+            <h3>1 video on this page</h3>
+            <p class="gt-hint">Canvas keeps videos in a protected frame, so open one by itself, then click GopherTranscript again on that page to save it.</p>
+            <ul class="gt-videos"><li><span class="gt-vtitle">PSY1001 F26_11/02/2026 Stress</span><span class="gt-open">Open video</span></li></ul>
+          </div>
+        </div>
+      </div>
+      <div class="state">
+        <h3>Then, on the video's tab</h3>
+        <p>Click <strong>GopherTranscript</strong> again, then press <strong>Text (.txt)</strong> or <strong>Captions (.vtt)</strong>, the same as a single UNITE lecture.</p>
+        <div class="stage">
+          <div class="gt-panel" aria-hidden="true">
+            <span class="gt-close">×</span>
+            <h3>Save transcript</h3>
+            <p class="gt-source">Canvas video</p>
+            <div class="gt-row"><span class="gt-btn">Text (.txt)</span><span class="gt-btn secondary">Captions (.vtt)</span></div>
+            <div class="gt-status">Saved 911 caption lines.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="notes">
     <div>
       <h2>Privacy</h2>
       <ul>
-        <li>Everything runs in your own browser, using the UNITE login you already have. It never sees your password.</li>
-        <li>It only talks to UNITE's caption server, the same one your video player uses. No tracking, no accounts.</li>
+        <li>Everything runs in your own browser, using the UNITE or Canvas login you already have. It never sees your password.</li>
+        <li>It only downloads the caption files your video player already uses. No tracking, no accounts.</li>
       </ul>
     </div>
     <div>
@@ -272,13 +312,14 @@
       <ul>
         <li>Transcripts come from auto-generated captions, so expect mistakes with names, math, and code.</li>
         <li>They're for your own studying. Please don't post or share them; lectures belong to your instructors.</li>
+        <li>Saving a transcript doesn't count as watching. It won't mark lecture attendance or complete in-video quizzes.</li>
         <li>If it can't find captions, press play for a few seconds and click the bookmark again.</li>
       </ul>
     </div>
   </section>
 
   <footer>
-    <p>GopherTranscript is unofficial and not affiliated with the University of Minnesota or UNITE. If you need captions or transcripts as an accommodation, contact the Disability Resource Center.</p>
+    <p>GopherTranscript is unofficial and not affiliated with the University of Minnesota, UNITE, Canvas, or Kaltura. If you need captions or transcripts as an accommodation, contact the Disability Resource Center.</p>
     <p>Version 0.4.0. Made by Eric He. <a href="https://github.com/HeEric2007/GopherTranscript">Source on GitHub</a> (MIT license).</p>
   </footer>
 </main>
