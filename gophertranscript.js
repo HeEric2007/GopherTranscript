@@ -10,6 +10,15 @@
 // a hidden frame, one at a time, picks up its caption playlist the same way,
 // and bundles every transcript into a single .zip.
 //
+// Canvas pages (canvas.umn.edu): lecture videos are embedded through
+// Kaltura's Canvas tool, in a frame from kaf.canvas.umn.edu that the page
+// can't look inside. The Canvas panel lists those videos with a button to
+// open each one by itself.
+//
+// Kaltura video pages (kaf.canvas.umn.edu): the player's settings include a
+// link to its caption file (SRT or WebVTT). This script downloads that file
+// and saves it as a transcript.
+//
 // Nothing is sent anywhere else, and no login details are touched.
 //
 // This is the bookmarklet source. scripts/build-bookmarklet.mjs minifies it
@@ -30,15 +39,17 @@
   const PARAGRAPH_GAP_SECONDS = 4;
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const isPlayerPage = /\/portal\/player\.php$/.test(location.pathname);
-  const isCoursePage = /\/portal\/course\.php$/.test(location.pathname);
-  if (!isPlayerPage && !isCoursePage) {
-    // Clicked somewhere other than a UNITE course or lecture page.
-    const onUnite = location.hostname === "media.unite.umn.edu";
+  const onUnite = location.hostname === "media.unite.umn.edu";
+  const isPlayerPage = onUnite && /\/portal\/player\.php$/.test(location.pathname);
+  const isCoursePage = onUnite && /\/portal\/course\.php$/.test(location.pathname);
+  const isCanvasPage = location.hostname === "canvas.umn.edu";
+  const isKafPage = location.hostname === "kaf.canvas.umn.edu";
+  if (!isPlayerPage && !isCoursePage && !isCanvasPage && !isKafPage) {
+    // Clicked somewhere GopherTranscript doesn't work.
     window.alert(
       onUnite
         ? "GopherTranscript: open one of your courses (the page that lists its lecture videos) or a single lecture, then click GopherTranscript again."
-        : "GopherTranscript works on UNITE lecture pages (media.unite.umn.edu). Open your course's UNITE videos, then click GopherTranscript again."
+        : "GopherTranscript works on UNITE lecture pages (media.unite.umn.edu) and on Canvas pages with lecture videos. Open one of those, then click GopherTranscript again."
     );
     return;
   }
@@ -67,6 +78,7 @@
   function toSeconds(ts) {
     return ts
       .trim()
+      .replace(",", ".") // SRT uses 00:01:02,500
       .split(":")
       .map(Number)
       .reduce((total, p) => total * 60 + p, 0);
@@ -140,7 +152,7 @@
 
   // ---- Output formats -----------------------------------------------------
 
-  function buildTranscript(title, cues, pageUrl) {
+  function buildTranscript(title, cues, source) {
     const paragraphs = [];
     let current = null;
     for (const cue of cues) {
@@ -158,7 +170,7 @@
     const header = [
       title,
       "Transcript from the video's auto-generated captions, which may contain errors.",
-      `Saved ${new Date().toLocaleString()} from ${pageUrl}`,
+      `Saved ${new Date().toLocaleString()} from ${source}`,
     ];
     const body = paragraphs.map((p) => `[${formatClock(p.start)}] ${p.words.join(" ")}`);
     return header.join("\n") + "\n\n" + body.join("\n\n") + "\n";
@@ -183,7 +195,12 @@
 
   function safeFileName(title) {
     return (
-      title.replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, " ").trim().slice(0, 120) || "lecture"
+      title
+        .replace(/[\\/]+/g, "-") // "11/02/2026" -> "11-02-2026"
+        .replace(/[:*?"<>|]+/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 120) || "lecture"
     );
   }
 
@@ -291,7 +308,7 @@
 
   // ---- Panel UI -----------------------------------------------------------
 
-  function createPanel(heading, innerHtml) {
+  function createPanel(heading, innerHtml, width = 280) {
     const host = document.createElement("div");
     host.id = "gophertranscript-panel";
     host.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:2147483647;";
@@ -299,9 +316,18 @@
     root.innerHTML = `
       <style>
         .panel { font: 14px/1.4 system-ui, -apple-system, sans-serif; background:#fff; color:#1a1a1a;
-                 border:1px solid #c9c9c9; border-radius:10px; padding:12px; width:280px;
+                 border:1px solid #c9c9c9; border-radius:10px; padding:12px; width:${width}px;
+                 max-width:calc(100vw - 32px); box-sizing:border-box;
                  box-shadow:0 4px 16px rgba(0,0,0,.18); position:relative; }
-        h2 { font-size:14px; margin:0 0 8px; }
+        h2 { font-size:14px; margin:0 24px 8px 0; }
+        .hint { font-size:13px; color:#444; margin:0 0 8px; }
+        .source { font-size:12px; color:#666; margin:-4px 0 8px; }
+        ul.videos { list-style:none; margin:0; padding:0; max-height:260px; overflow:auto; }
+        ul.videos li { display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid #e6e6e6; }
+        ul.videos .vtitle { flex:1; font-size:13px; overflow-wrap:anywhere; }
+        a.open { flex:none; font-size:13px; font-weight:600; text-decoration:none; color:#fff; background:#7a0019;
+                 border-radius:6px; padding:6px 10px; }
+        a.open:focus-visible { outline:3px solid #ffb71e; outline-offset:2px; }
         .row { display:flex; gap:8px; }
         button { flex:1; font:inherit; padding:8px 6px; border-radius:6px; cursor:pointer;
                  border:1px solid #7a0019; background:#7a0019; color:#fff; }
@@ -327,7 +353,68 @@
     return { root, setStatus: (msg) => (status.textContent = msg) };
   }
 
-  // ---- Lecture page: save this lecture ------------------------------------
+  // Shows the panel now (or once the page has loaded), and lets a second
+  // click on the bookmarklet bring it back after it's closed.
+  function registerPanel(start) {
+    window.__gtShowPanel = () => {
+      const existing = document.getElementById("gophertranscript-panel");
+      if (existing) existing.style.display = "";
+      else start();
+    };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+    else start();
+  }
+
+  // ---- One video: the "Save transcript" panel -----------------------------
+  // loadCues(setStatus) resolves to the caption cues; describe() returns
+  // { title, source } for the file name and the transcript header.
+
+  function setUpSavePanel({ sourceNote, loadCues, describe }) {
+    let cachedCues = null;
+
+    function start() {
+      const { root, setStatus } = createPanel(
+        "Save transcript",
+        `${sourceNote ? `<p class="source">${sourceNote}</p>` : ""}
+         <div class="row">
+           <button class="txt">Text (.txt)</button>
+           <button class="vtt secondary">Captions (.vtt)</button>
+         </div>`
+      );
+      const buttons = [...root.querySelectorAll(".row button")];
+
+      async function run(kind) {
+        buttons.forEach((b) => (b.disabled = true));
+        try {
+          if (!cachedCues) {
+            cachedCues = await loadCues(setStatus);
+            if (cachedCues.length === 0) throw new Error("the captions for this video are empty");
+          }
+          const { title, source } = describe();
+          const base = safeFileName(title);
+          if (kind === "txt") {
+            const text = buildTranscript(title, cachedCues, source);
+            saveBlob(`${base}.txt`, new Blob([text], { type: "text/plain;charset=utf-8" }));
+          } else {
+            saveBlob(`${base}.vtt`, new Blob([buildVtt(cachedCues)], { type: "text/vtt;charset=utf-8" }));
+          }
+          setStatus(`Saved ${cachedCues.length} caption lines.`);
+        } catch (err) {
+          cachedCues = null;
+          setStatus(`Couldn't save: ${err.message}`);
+        } finally {
+          buttons.forEach((b) => (b.disabled = false));
+        }
+      }
+
+      root.querySelector(".txt").addEventListener("click", () => run("txt"));
+      root.querySelector(".vtt").addEventListener("click", () => run("vtt"));
+    }
+
+    registerPanel(start);
+  }
+
+  // ---- UNITE lecture page --------------------------------------------------
 
   function setUpPlayerPage() {
     let playlistUrl = null;
@@ -358,64 +445,142 @@
       });
     }
 
-    let cachedCues = null;
-
-    function start() {
-      const { root, setStatus } = createPanel(
-        "Save transcript",
-        `<div class="row">
-           <button class="txt">Text (.txt)</button>
-           <button class="vtt secondary">Captions (.vtt)</button>
-         </div>`
-      );
-      const buttons = [...root.querySelectorAll(".row button")];
-
-      async function run(kind) {
-        buttons.forEach((b) => (b.disabled = true));
-        try {
-          if (!cachedCues) {
-            setStatus("Looking for this lecture's captions…");
-            const url = await waitForPlaylist(15000);
-            if (!url) {
-              throw new Error(
-                "no captions found yet. Press play for a few seconds and try again. " +
-                  "If this lecture has no captions, the Disability Resource Center can request them."
-              );
-            }
-            cachedCues = await fetchAllCues(url, (i, n) =>
-              setStatus(`Downloading captions ${i} of ${n}…`)
-            );
-            if (cachedCues.length === 0) throw new Error("the captions for this lecture are empty");
-          }
-          const title =
-            playerTitleIn(window) ||
-            `UNITE lecture ${new URLSearchParams(location.search).get("media_id") || ""}`.trim();
-          const base = safeFileName(title);
-          if (kind === "txt") {
-            const text = buildTranscript(title, cachedCues, lecturePageUrl(location.href));
-            saveBlob(`${base}.txt`, new Blob([text], { type: "text/plain;charset=utf-8" }));
-          } else {
-            saveBlob(`${base}.vtt`, new Blob([buildVtt(cachedCues)], { type: "text/vtt;charset=utf-8" }));
-          }
-          setStatus(`Saved ${cachedCues.length} caption lines.`);
-        } catch (err) {
-          setStatus(`Couldn't save: ${err.message}`);
-        } finally {
-          buttons.forEach((b) => (b.disabled = false));
+    setUpSavePanel({
+      async loadCues(setStatus) {
+        setStatus("Looking for this lecture's captions…");
+        const url = await waitForPlaylist(15000);
+        if (!url) {
+          throw new Error(
+            "no captions found yet. Press play for a few seconds and try again. " +
+              "If this lecture has no captions, the Disability Resource Center can request them."
+          );
         }
-      }
+        return fetchAllCues(url, (i, n) => setStatus(`Downloading captions ${i} of ${n}…`));
+      },
+      describe: () => ({
+        title:
+          playerTitleIn(window) ||
+          `UNITE lecture ${new URLSearchParams(location.search).get("media_id") || ""}`.trim(),
+        source: lecturePageUrl(location.href),
+      }),
+    });
+  }
 
-      root.querySelector(".txt").addEventListener("click", () => run("txt"));
-      root.querySelector(".vtt").addEventListener("click", () => run("vtt"));
+  // ---- Kaltura video page from Canvas (kaf.canvas.umn.edu) -----------------
+
+  function kafPlayer() {
+    try {
+      return Object.values(window.KalturaPlayer?.getPlayers?.() || {})[0] || null;
+    } catch (_) {
+      return null;
     }
+  }
 
-    window.__gtShowPanel = () => {
-      const existing = document.getElementById("gophertranscript-panel");
-      if (existing) existing.style.display = "";
-      else start();
-    };
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
-    else start();
+  // Waits for the player to load the video's details, which include its
+  // caption tracks.
+  async function waitForKafSources(timeoutMs) {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+      const player = kafPlayer();
+      if (player?.sources?.id) return player;
+      await sleep(400);
+    }
+    return kafPlayer();
+  }
+
+  // Prefers English, and human-made captions over auto-generated ones.
+  function pickCaption(captions) {
+    const readable = captions.filter((c) => c.url && /^(srt|vtt|webvtt)$/i.test(c.type || "srt"));
+    const english = readable.filter((c) => /^en/i.test(c.language || "") || /english/i.test(c.label || ""));
+    const pool = english.length ? english : readable;
+    return pool.find((c) => !/auto/i.test(c.label || "")) || pool[0] || null;
+  }
+
+  function setUpKafPage() {
+    setUpSavePanel({
+      sourceNote: "Canvas video",
+      async loadCues(setStatus) {
+        setStatus("Looking for this video's captions…");
+        const player = await waitForKafSources(15000);
+        if (!player) throw new Error("no video player found on this page.");
+        const captions = player.sources?.captions || [];
+        if (captions.length === 0) {
+          throw new Error(
+            "this video has no captions. The Disability Resource Center can request them."
+          );
+        }
+        const caption = pickCaption(captions);
+        if (!caption) throw new Error("this video's captions are in a format GopherTranscript can't read yet.");
+        setStatus(`Downloading captions (${caption.label || caption.language || "captions"})…`);
+        const res = await fetch(caption.url);
+        if (!res.ok) throw new Error(`caption request failed (${res.status})`);
+        const seen = new Set();
+        return parseVtt(await res.text())
+          .filter((c) => {
+            const key = `${c.start}|${c.text}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })
+          .sort((a, b) => a.start - b.start);
+      },
+      describe: () => {
+        const sources = kafPlayer()?.sources || {};
+        return {
+          title: sources.metadata?.name?.trim() || `Canvas video ${sources.id || ""}`.trim(),
+          source: `Canvas (Kaltura video ${sources.id || "unknown"})`,
+        };
+      },
+    });
+  }
+
+  // ---- Canvas page: list the embedded videos -------------------------------
+
+  // Kaltura videos on Canvas pages are embedded as external-tool frames.
+  function canvasVideos() {
+    const seen = new Set();
+    const videos = [];
+    for (const frame of document.querySelectorAll("iframe")) {
+      let url;
+      try {
+        url = new URL(frame.getAttribute("src") || "", location.href);
+      } catch (_) {
+        continue;
+      }
+      const isEmbed =
+        url.hostname === "kaf.canvas.umn.edu" ||
+        (url.hostname === location.hostname && /\/external_tools\/(retrieve|\d+)/.test(url.pathname));
+      if (!isEmbed || seen.has(url.href)) continue;
+      seen.add(url.href);
+      const title = (frame.title || "").trim();
+      videos.push({ href: url.href, title: title && !/^(error|kaltura)$/i.test(title) ? title : "" });
+    }
+    return videos.map((v, i) => ({ ...v, title: v.title || `Video ${i + 1}` }));
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+  }
+
+  function setUpCanvasPage() {
+    function start() {
+      const videos = canvasVideos();
+      const list = videos.length
+        ? `<p class="hint">Canvas keeps videos in a protected frame, so open one by itself, then click GopherTranscript again on that page to save it.</p>
+           <ul class="videos">${videos
+             .map(
+               (v) => `<li><span class="vtitle">${escapeHtml(v.title)}</span>
+                 <a class="open" href="${escapeHtml(v.href)}" target="_blank" rel="noopener">Open video</a></li>`
+             )
+             .join("")}</ul>`
+        : `<p class="hint">No lecture videos found on this page. Open the Canvas page that has the video player (for example, the week's lecture page), then click GopherTranscript again.</p>`;
+      createPanel(
+        videos.length === 1 ? "1 video on this page" : `${videos.length || "No"} videos on this page`,
+        list,
+        320
+      );
+    }
+    registerPanel(start);
   }
 
   // ---- Course page: save every lecture ------------------------------------
@@ -556,15 +721,11 @@
       });
     }
 
-    window.__gtShowPanel = () => {
-      const existing = document.getElementById("gophertranscript-panel");
-      if (existing) existing.style.display = "";
-      else start();
-    };
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
-    else start();
+    registerPanel(start);
   }
 
   if (isPlayerPage) setUpPlayerPage();
   if (isCoursePage) setUpCoursePage();
+  if (isCanvasPage) setUpCanvasPage();
+  if (isKafPage) setUpKafPage();
 })();
