@@ -12,11 +12,11 @@
 //
 // Nothing is sent anywhere else, and no login details are touched.
 //
-// The same file runs as the Chrome extension's content script and, minified
-// by scripts/build-bookmarklet.mjs, as the bookmarklet.
+// This is the bookmarklet source. scripts/build-bookmarklet.mjs minifies it
+// into the javascript: link on the install page (docs/index.html).
 
 (() => {
-  // Bookmarklet clicked again (or panel closed): just bring the panel back.
+  // Clicked again on the same page (or after closing the panel): bring it back.
   if (window.__gtLoaded) {
     window.__gtShowPanel?.();
     return;
@@ -33,7 +33,7 @@
   const isPlayerPage = /\/portal\/player\.php$/.test(location.pathname);
   const isCoursePage = /\/portal\/course\.php$/.test(location.pathname);
   if (!isPlayerPage && !isCoursePage) {
-    // Only reachable from the bookmarklet; the extension only runs on these pages.
+    // Clicked somewhere other than a UNITE course or lecture page.
     const onUnite = location.hostname === "media.unite.umn.edu";
     window.alert(
       onUnite

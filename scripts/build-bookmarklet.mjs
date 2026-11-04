@@ -1,4 +1,4 @@
-// Builds the bookmarklet from content.js and writes the install page.
+// Builds the bookmarklet from gophertranscript.js and writes the install page.
 //   npm install && npm run build
 // Outputs:
 //   docs/bookmarklet.js  minified code (for reference)
@@ -10,8 +10,8 @@ import { dirname, join } from "node:path";
 import { minify } from "terser";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const source = await readFile(join(root, "content.js"), "utf8");
-const { version } = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
+const source = await readFile(join(root, "gophertranscript.js"), "utf8");
+const { version } = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 
 const { code } = await minify(source, {
   ecma: 2020,
