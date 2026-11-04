@@ -11,10 +11,16 @@
 // and bundles every transcript into a single .zip.
 //
 // Nothing is sent anywhere else, and no login details are touched.
+//
+// The same file runs as the Chrome extension's content script and, minified
+// by scripts/build-bookmarklet.mjs, as the bookmarklet.
 
 (() => {
-  if (window.__gtLoaded) return;
-  window.__gtLoaded = true;
+  // Bookmarklet clicked again (or panel closed): just bring the panel back.
+  if (window.__gtLoaded) {
+    window.__gtShowPanel?.();
+    return;
+  }
 
   const PAUSE_BETWEEN_REQUESTS_MS = 250; // between caption chunks
   const PAUSE_BETWEEN_LECTURES_MS = 1000; // between lectures in "Save all"
@@ -26,7 +32,17 @@
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const isPlayerPage = /\/portal\/player\.php$/.test(location.pathname);
   const isCoursePage = /\/portal\/course\.php$/.test(location.pathname);
-  if (!isPlayerPage && !isCoursePage) return;
+  if (!isPlayerPage && !isCoursePage) {
+    // Only reachable from the bookmarklet; the extension only runs on these pages.
+    const onUnite = location.hostname === "media.unite.umn.edu";
+    window.alert(
+      onUnite
+        ? "GopherTranscript: open one of your courses (the page that lists its lecture videos) or a single lecture, then click GopherTranscript again."
+        : "GopherTranscript works on UNITE lecture pages (media.unite.umn.edu). Open your course's UNITE videos, then click GopherTranscript again."
+    );
+    return;
+  }
+  window.__gtLoaded = true;
 
   // ---- Captions: fetch and parse ------------------------------------------
 
@@ -304,7 +320,8 @@
         ${innerHtml}
         <div class="status" role="status" aria-live="polite"></div>
       </div>`;
-    root.querySelector(".close").addEventListener("click", () => host.remove());
+    // Hide rather than remove, so a running "Save all" keeps its progress.
+    root.querySelector(".close").addEventListener("click", () => (host.style.display = "none"));
     document.body.appendChild(host);
     const status = root.querySelector(".status");
     return { root, setStatus: (msg) => (status.textContent = msg) };
@@ -392,6 +409,11 @@
       root.querySelector(".vtt").addEventListener("click", () => run("vtt"));
     }
 
+    window.__gtShowPanel = () => {
+      const existing = document.getElementById("gophertranscript-panel");
+      if (existing) existing.style.display = "";
+      else start();
+    };
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
     else start();
   }
@@ -534,6 +556,11 @@
       });
     }
 
+    window.__gtShowPanel = () => {
+      const existing = document.getElementById("gophertranscript-panel");
+      if (existing) existing.style.display = "";
+      else start();
+    };
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
     else start();
   }

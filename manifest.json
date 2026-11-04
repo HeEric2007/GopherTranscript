@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GopherTranscript (unofficial)",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Adds buttons to UNITE lecture and course pages that save video captions as readable transcripts, one lecture or a whole course at a time. Unofficial, for personal accessibility use.",
   "content_scripts": [
     {

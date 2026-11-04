@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GopherTranscript</title>
+<meta name="description" content="Save transcripts of your UNITE lecture videos, one lecture or a whole course at a time. Unofficial, for personal accessibility use.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --board: #f7f9fa;
+    --board-edge: #dfe4e8;
+    --surface: #ffffff;
+    --ink: #1c1f23;
+    --ink-soft: #4a525b;
+    --maroon: #7a1530;
+    --blue: #1f4fa0;
+    --gold: #f2b630;
+    --chrome: #e7ebef;
+    --chrome-line: #c9d0d7;
+    --focus: #1f4fa0;
+    --on-blue: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --board: #1b1f24; --board-edge: #2c333b; --surface: #232930; --ink: #eef1f4;
+      --ink-soft: #b4bdc6; --maroon: #f08aa3; --blue: #8fb4f5; --chrome: #2a3139;
+      --chrome-line: #3a434d; --focus: #8fb4f5; --on-blue: #12161a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --board: #1b1f24; --board-edge: #2c333b; --surface: #232930; --ink: #eef1f4;
+    --ink-soft: #b4bdc6; --maroon: #f08aa3; --blue: #8fb4f5; --chrome: #2a3139;
+    --chrome-line: #3a434d; --focus: #8fb4f5; --on-blue: #12161a;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--board); color: var(--ink);
+    font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+    font-size: 1.125rem; line-height: 1.6;
+  }
+  a { color: var(--blue); text-underline-offset: 0.15em; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+  kbd {
+    font: inherit; font-size: 0.92em; padding: 0.02em 0.4em; border-radius: 4px;
+    border: 1px solid var(--chrome-line); background: var(--chrome); white-space: nowrap;
+  }
+  .wrap { max-width: 72rem; margin: 0 auto; padding: 0 1rem; }
+
+  /* Header */
+  header.top { border-bottom: 1px solid var(--board-edge); background: var(--surface); }
+  header.top .wrap { display: flex; align-items: center; justify-content: space-between; min-height: 4.25rem; gap: 1rem; }
+  .brand { font-weight: 700; font-size: 1.3rem; color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; }
+  .source-link {
+    font-weight: 700; text-decoration: none; color: var(--on-blue); background: var(--blue);
+    padding: 0.5rem 1rem; border-radius: 6px; font-size: 1rem;
+  }
+
+  /* Hero */
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 3.5rem; align-items: start; padding: 3.5rem 0 4rem; }
+  h1 {
+    font-size: clamp(2.5rem, 5.4vw, 3.9rem); line-height: 1.04; letter-spacing: -0.02em;
+    margin: 0 0 1.1rem; color: var(--maroon); max-width: 13ch;
+  }
+  .lede { font-size: 1.28rem; line-height: 1.5; margin: 0 0 2.25rem; max-width: 32rem; }
+  h2 { font-size: 1.45rem; line-height: 1.25; margin: 0 0 1rem; }
+
+  ol.steps { list-style: none; counter-reset: step; padding: 0; margin: 0; }
+  ol.steps > li { counter-increment: step; position: relative; padding-left: 2.6rem; margin: 0 0 1.6rem; }
+  ol.steps > li::before {
+    content: counter(step); position: absolute; left: 0; top: 0.05rem;
+    width: 1.85rem; height: 1.85rem; border-radius: 50%;
+    background: var(--maroon); color: var(--board); font-weight: 700; font-size: 1rem;
+    display: grid; place-items: center;
+  }
+  .drag-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem 1rem; margin: 0.9rem 0 0.35rem; }
+  .bookmarklet {
+    display: inline-flex; align-items: center; gap: 0.55rem;
+    font-weight: 700; font-size: 1.2rem; text-decoration: none;
+    color: #1c1f23; background: var(--gold);
+    padding: 0.75rem 1.25rem 0.75rem 1rem; border-radius: 8px;
+    box-shadow: 0 3px 0 #b8861a; cursor: grab; user-select: none; -webkit-user-drag: element;
+  }
+  .bookmarklet:active { cursor: grabbing; }
+  .marker-note { font-family: "Caveat", cursive; font-size: 1.65rem; line-height: 1; color: var(--blue); display: inline-flex; align-items: center; gap: 0.3rem; }
+  .small { font-size: 1rem; color: var(--ink-soft); margin: 0.4rem 0 0; }
+  .click-hint { min-height: 1.5em; margin: 0.3rem 0 0; color: var(--maroon); font-weight: 700; font-size: 1rem; }
+
+  details { margin-top: 0.4rem; font-size: 1rem; }
+  summary { cursor: pointer; color: var(--blue); font-weight: 700; }
+  details ol { padding-left: 1.3rem; margin: 0.7rem 0 0; }
+  details li { margin-bottom: 0.45rem; }
+  .copy { font: inherit; font-weight: 700; color: var(--on-blue); background: var(--blue); border: 0; border-radius: 6px; padding: 0.4rem 0.9rem; cursor: pointer; }
+
+  /* Preview: a simplified UNITE lecture list with the panel open */
+  .preview {
+    background: var(--surface); border: 1px solid var(--board-edge); border-radius: 12px;
+    padding: 1.25rem; position: relative; box-shadow: 0 18px 40px -24px rgba(28, 31, 35, 0.45);
+  }
+  .preview figcaption { font-size: 0.95rem; color: var(--ink-soft); margin: 0.9rem 0 0; }
+  .mock-page { border-radius: 8px; overflow: hidden; border: 1px solid #c9ced3; background: #fff; color: #1c1f23; position: relative; min-height: 25rem; }
+  .mock-head { background: #6f1422; color: #fff; font-weight: 700; padding: 0.55rem 0.9rem; font-size: 1.05rem; }
+  .mock-row { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.9rem; align-items: center; padding: 0.55rem 0.9rem; border-bottom: 1px solid #e3e6e9; }
+  .mock-thumb { height: 3.6rem; border-radius: 3px; background: linear-gradient(180deg, #c9cdcf 0%, #b9bec1 78%, #6a6f73 79%, #8a8f92 100%); }
+  .mock-row span { color: #7a1530; text-decoration: underline; font-size: 1rem; }
+
+  /* The real panel, reused for the preview and the full view */
+  .gt-panel {
+    font: 14px/1.4 system-ui, -apple-system, sans-serif; background: #fff; color: #1a1a1a;
+    border: 1px solid #c9c9c9; border-radius: 10px; padding: 12px; width: 280px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.18); position: relative; text-align: left;
+  }
+  .gt-panel h3 { font-size: 14px; margin: 0 0 8px; }
+  .gt-row { display: flex; gap: 8px; }
+  .gt-btn { flex: 1; font: inherit; padding: 8px 6px; border-radius: 6px; border: 1px solid #7a0019; background: #7a0019; color: #fff; text-align: center; }
+  .gt-btn.secondary { background: #fff; color: #7a0019; }
+  .gt-btn.busy { opacity: .6; }
+  .gt-check { display: flex; gap: 6px; align-items: center; font-size: 13px; margin-top: 8px; }
+  .gt-box { width: 13px; height: 13px; border: 1px solid #767676; border-radius: 2px; display: inline-block; }
+  .gt-box.on { background: #1f6feb; border-color: #1f6feb; position: relative; }
+  .gt-box.on::after { content: ""; position: absolute; left: 3.5px; top: 0.5px; width: 3px; height: 7px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .gt-status { margin-top: 8px; font-size: 13px; color: #444; }
+  .gt-close { position: absolute; top: 4px; right: 10px; color: #666; font-size: 18px; }
+  .mock-page .gt-panel { position: absolute; right: 12px; bottom: 12px; }
+
+  /* Full view */
+  .full { border-top: 1px solid var(--board-edge); padding: 3.5rem 0 1rem; }
+  .full .intro { max-width: 40rem; margin: 0 0 2rem; }
+  .states { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem; }
+  .state { background: var(--surface); border: 1px solid var(--board-edge); border-radius: 12px; padding: 1.5rem; }
+  .state h3 { font-size: 1.2rem; margin: 0 0 0.35rem; }
+  .state p { margin: 0 0 1.25rem; max-width: 30rem; }
+  .state .stage { display: flex; justify-content: center; padding: 1.5rem 0.5rem; border-radius: 8px; background: var(--chrome); }
+
+  .notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.5rem; padding: 3rem 0 1rem; }
+  .notes ul { padding-left: 1.2rem; margin: 0; }
+  .notes li { margin-bottom: 0.55rem; }
+
+  footer { border-top: 1px solid var(--board-edge); margin-top: 2.5rem; padding: 1.5rem 0 3rem; font-size: 0.98rem; color: var(--ink-soft); }
+  footer p { max-width: 46rem; margin: 0 0 0.6rem; }
+
+  @media (max-width: 60rem) {
+    .hero { grid-template-columns: 1fr; gap: 2.5rem; padding-top: 2.5rem; }
+    h1 { max-width: none; }
+    .states, .notes { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 30rem) {
+    .mock-row { grid-template-columns: 4.5rem 1fr; }
+    .mock-thumb { height: 2.6rem; }
+    .mock-page .gt-panel { width: auto; left: 12px; }
+    .gt-panel { width: 100%; max-width: 280px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .bookmarklet { transition: transform 120ms ease; }
+    .bookmarklet:hover { transform: translateY(-2px); }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./">
+      <svg width="22" height="22" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h10a1 1 0 0 1 1 1V18l-6-3.6L4 18V3.5a1 1 0 0 1 1-1Z" fill="#7a1530"/><path d="M7 7h6M7 10h6M7 13h3" stroke="#f2b630" stroke-width="1.6" stroke-linecap="round"/></svg>
+      GopherTranscript
+    </a>
+    <a class="source-link" href="https://github.com/HeEric2007/GopherTranscript">View on GitHub</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div>
+      <h1>Save your UNITE lectures as text</h1>
+      <p class="lede">Get a readable transcript of any UNITE lecture video, or every lecture in a course in one download. Good for screen readers, text-to-speech, translation, and searching your notes.</p>
+
+      <h2>Get started</h2>
+      <ol class="steps">
+        <li>
+          Drag this button to your bookmarks bar:
+          <div class="drag-row">
+            <a class="bookmarklet" id="bookmarklet" href="javascript:(()%3D%3E%7Bif(window.__gtLoaded)return%20void%20window.__gtShowPanel%3F.()%3Bconst%20t%3D%2FserveWebVTT.*%5C.m3u8(%5C%3F%7C%24)%2F%2Ce%3Dt%3D%3Enew%20Promise(e%3D%3EsetTimeout(e%2Ct))%2Cn%3D%2F%5C%2Fportal%5C%2Fplayer%5C.php%24%2F.test(location.pathname)%2Cr%3D%2F%5C%2Fportal%5C%2Fcourse%5C.php%24%2F.test(location.pathname)%3Bif(!n%26%26!r)%7Bconst%20t%3D%22media.unite.umn.edu%22%3D%3D%3Dlocation.hostname%3Breturn%20void%20window.alert(t%3F%22GopherTranscript%3A%20open%20one%20of%20your%20courses%20(the%20page%20that%20lists%20its%20lecture%20videos)%20or%20a%20single%20lecture%2C%20then%20click%20GopherTranscript%20again.%22%3A%22GopherTranscript%20works%20on%20UNITE%20lecture%20pages%20(media.unite.umn.edu).%20Open%20your%20course's%20UNITE%20videos%2C%20then%20click%20GopherTranscript%20again.%22)%7Dfunction%20o(e)%7Breturn%20e.performance.getEntriesByType(%22resource%22).map(t%3D%3Et.name).find(e%3D%3Et.test(e))%7C%7Cnull%7Dfunction%20a(t)%7Btry%7Bconst%20e%3Dt.KalturaPlayer%3F.getPlayers%3F.()%7C%7C%7B%7D%2Cn%3DObject.values(e)%5B0%5D%3F.sources%3F.metadata%3F.name%3Bif(n)return%20n.trim()%7Dcatch(t)%7B%7Dreturn%20null%7Dfunction%20s(t)%7Breturn%20t.trim().split(%22%3A%22).map(Number).reduce((t%2Ce)%3D%3E60*t%2Be%2C0)%7Dfunction%20i(t)%7Breturn%20t.replace(%2F%26lt%3B%2Fg%2C%22%3C%22).replace(%2F%26gt%3B%2Fg%2C%22%3E%22).replace(%2F%26quot%3B%2Fg%2C'%22').replace(%2F%26%2339%3B%7C%26apos%3B%2Fg%2C%22'%22).replace(%2F%26nbsp%3B%2Fg%2C%22%20%22).replace(%2F%26amp%3B%2Fg%2C%22%26%22)%7Dfunction%20l(t)%7Bconst%20e%3D%5B%5D%3Bfor(const%20n%20of%20t.replace(%2F%5Cr%2Fg%2C%22%22).split(%2F%5Cn%7B2%2C%7D%2F))%7Bconst%20t%3Dn.split(%22%5Cn%22)%2Cr%3Dt.findIndex(t%3D%3Et.includes(%22--%5Cx3e%22))%3Bif(r%3C0)continue%3Bconst%5Bo%2Ca%5D%3Dt%5Br%5D.split(%22--%5Cx3e%22)%2Cl%3Da.trim().split(%2F%5Cs%2B%2F)%5B0%5D%2Cc%3Di(t.slice(r%2B1).join(%22%20%22).replace(%2F%3C%5B%5E%3E%5D%2B%3E%2Fg%2C%22%22)).replace(%2F%5Cs%2B%2Fg%2C%22%20%22).trim()%3Bc%26%26e.push(%7Bstart%3As(o)%2Cend%3As(l)%2Ctext%3Ac%7D)%7Dreturn%20e%7Dasync%20function%20c(t%2Cn)%7Bconst%20r%3Dawait%20fetch(t)%3Bif(!r.ok)throw%20new%20Error(%60caption%20list%20request%20failed%20(%24%7Br.status%7D)%60)%3Bconst%20o%3D(await%20r.text()).split(%22%5Cn%22).map(t%3D%3Et.trim()).filter(t%3D%3Et%26%26!t.startsWith(%22%23%22)).map(e%3D%3Enew%20URL(e%2Ct).href)%3Bif(0%3D%3D%3Do.length)throw%20new%20Error(%22the%20caption%20list%20was%20empty%22)%3Bconst%20a%3Dnew%20Set%2Cs%3D%5B%5D%3Bfor(let%20t%3D0%3Bt%3Co.length%3Bt%2B%2B)%7Bn(t%2B1%2Co.length)%3Bconst%20r%3Dawait%20fetch(o%5Bt%5D)%3Bif(!r.ok)throw%20new%20Error(%60caption%20part%20%24%7Bt%2B1%7D%20failed%20(%24%7Br.status%7D)%60)%3Bfor(const%20t%20of%20l(await%20r.text()))%7Bconst%20e%3D%60%24%7Bt.start%7D%7C%24%7Bt.text%7D%60%3Ba.has(e)%7C%7C(a.add(e)%2Cs.push(t))%7Dt%3Co.length-1%26%26await%20e(250)%7Dreturn%20s.sort((t%2Ce)%3D%3Et.start-e.start)%2Cs%7Dfunction%20d(t%2Ce%2Cn)%7Bconst%20r%3D%5B%5D%3Blet%20o%3Dnull%3Bfor(const%20t%20of%20e)(!o%7C%7Ct.start-o.lastEnd%3E4%7C%7Ct.start-o.start%3E%3D60)%26%26(o%3D%7Bstart%3At.start%2ClastEnd%3At.end%2Cwords%3A%5B%5D%7D%2Cr.push(o))%2Co.words.push(t.text)%2Co.lastEnd%3DMath.max(o.lastEnd%2Ct.end)%3Bconst%20a%3D%5Bt%2C%22Transcript%20from%20the%20video's%20auto-generated%20captions%2C%20which%20may%20contain%20errors.%22%2C%60Saved%20%24%7B(new%20Date).toLocaleString()%7D%20from%20%24%7Bn%7D%60%5D%2Cs%3Dr.map(t%3D%3E%60%5B%24%7Bfunction(t)%7Bconst%20e%3DMath.floor(t)%2Cn%3DMath.floor(e%2F3600)%2Cr%3DMath.floor(e%253600%2F60)%2Co%3DString(e%2560).padStart(2%2C%220%22)%3Breturn%20n%3E0%3F%60%24%7Bn%7D%3A%24%7BString(r).padStart(2%2C%220%22)%7D%3A%24%7Bo%7D%60%3A%60%24%7Br%7D%3A%24%7Bo%7D%60%7D(t.start)%7D%5D%20%24%7Bt.words.join(%22%20%22)%7D%60)%3Breturn%20a.join(%22%5Cn%22)%2B%22%5Cn%5Cn%22%2Bs.join(%22%5Cn%5Cn%22)%2B%22%5Cn%22%7Dfunction%20p(t)%7Bconst%20e%3DMath.round(1e3*t)%3Breturn%60%24%7BString(Math.floor(e%2F36e5)).padStart(2%2C%220%22)%7D%3A%24%7BString(Math.floor(e%2536e5%2F6e4)).padStart(2%2C%220%22)%7D%3A%24%7BString(Math.floor(e%256e4%2F1e3)).padStart(2%2C%220%22)%7D.%24%7BString(e%251e3).padStart(3%2C%220%22)%7D%60%7Dfunction%20u(t)%7Breturn%22WEBVTT%5Cn%5Cn%22%2Bt.map(t%3D%3E%60%24%7Bp(t.start)%7D%20--%5Cx3e%20%24%7Bp(t.end)%7D%5Cn%24%7Bt.text%7D%60).join(%22%5Cn%5Cn%22)%2B%22%5Cn%22%7Dfunction%20f(t)%7Breturn%20t.replace(%2F%5B%5C%5C%2F%3A*%3F%22%3C%3E%7C%5D%2B%2Fg%2C%22%22).replace(%2F%5Cs%2B%2Fg%2C%22%20%22).trim().slice(0%2C120)%7C%7C%22lecture%22%7Dfunction%20h(t)%7Bconst%20e%3Dnew%20URL(t%2Clocation.href)%3Breturn%60%24%7Be.origin%7D%24%7Be.pathname%7D%3Fmedia_id%3D%24%7Be.searchParams.get(%22media_id%22)%7C%7C%22%22%7D%60%7Dfunction%20g(t%2Ce)%7Bconst%20n%3DURL.createObjectURL(e)%2Cr%3Ddocument.createElement(%22a%22)%3Br.href%3Dn%2Cr.download%3Dt%2Cdocument.body.appendChild(r)%2Cr.click()%2Cr.remove()%2CsetTimeout(()%3D%3EURL.revokeObjectURL(n)%2C3e4)%7Dwindow.__gtLoaded%3D!0%3Bconst%20m%3D(()%3D%3E%7Bconst%20t%3Dnew%20Uint32Array(256)%3Bfor(let%20e%3D0%3Be%3C256%3Be%2B%2B)%7Blet%20n%3De%3Bfor(let%20t%3D0%3Bt%3C8%3Bt%2B%2B)n%3D1%26n%3F3988292384%5En%3E%3E%3E1%3An%3E%3E%3E1%3Bt%5Be%5D%3Dn%3E%3E%3E0%7Dreturn%20t%7D)()%3Bfunction%20w(t)%7Blet%20e%3D4294967295%3Bfor(let%20n%3D0%3Bn%3Ct.length%3Bn%2B%2B)e%3Dm%5B255%26(e%5Et%5Bn%5D)%5D%5Ee%3E%3E%3E8%3Breturn(4294967295%5Ee)%3E%3E%3E0%7Dfunction%20y(t%2Ce)%7Bconst%20n%3Ddocument.createElement(%22div%22)%3Bn.id%3D%22gophertranscript-panel%22%2Cn.style.cssText%3D%22position%3Afixed%3Bright%3A16px%3Bbottom%3A16px%3Bz-index%3A2147483647%3B%22%3Bconst%20r%3Dn.attachShadow(%7Bmode%3A%22open%22%7D)%3Br.innerHTML%3D%60%5Cn%20%20%20%20%20%20%3Cstyle%3E%5Cn%20%20%20%20%20%20%20%20.panel%20%7B%20font%3A%2014px%2F1.4%20system-ui%2C%20-apple-system%2C%20sans-serif%3B%20background%3A%23fff%3B%20color%3A%231a1a1a%3B%5Cn%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20border%3A1px%20solid%20%23c9c9c9%3B%20border-radius%3A10px%3B%20padding%3A12px%3B%20width%3A280px%3B%5Cn%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20box-shadow%3A0%204px%2016px%20rgba(0%2C0%2C0%2C.18)%3B%20position%3Arelative%3B%20%7D%5Cn%20%20%20%20%20%20%20%20h2%20%7B%20font-size%3A14px%3B%20margin%3A0%200%208px%3B%20%7D%5Cn%20%20%20%20%20%20%20%20.row%20%7B%20display%3Aflex%3B%20gap%3A8px%3B%20%7D%5Cn%20%20%20%20%20%20%20%20button%20%7B%20flex%3A1%3B%20font%3Ainherit%3B%20padding%3A8px%206px%3B%20border-radius%3A6px%3B%20cursor%3Apointer%3B%5Cn%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20border%3A1px%20solid%20%237a0019%3B%20background%3A%237a0019%3B%20color%3A%23fff%3B%20%7D%5Cn%20%20%20%20%20%20%20%20button.secondary%20%7B%20background%3A%23fff%3B%20color%3A%237a0019%3B%20%7D%5Cn%20%20%20%20%20%20%20%20button%3Adisabled%20%7B%20opacity%3A.6%3B%20cursor%3Aprogress%3B%20%7D%5Cn%20%20%20%20%20%20%20%20button%3Afocus-visible%2C%20input%3Afocus-visible%20%7B%20outline%3A3px%20solid%20%23ffb71e%3B%20outline-offset%3A2px%3B%20%7D%5Cn%20%20%20%20%20%20%20%20label%20%7B%20display%3Aflex%3B%20gap%3A6px%3B%20align-items%3Acenter%3B%20font-size%3A13px%3B%20margin-top%3A8px%3B%20%7D%5Cn%20%20%20%20%20%20%20%20.status%20%7B%20margin-top%3A8px%3B%20font-size%3A13px%3B%20color%3A%23444%3B%20min-height%3A1em%3B%20%7D%5Cn%20%20%20%20%20%20%20%20.close%20%7B%20position%3Aabsolute%3B%20top%3A4px%3B%20right%3A8px%3B%20flex%3Anone%3B%20background%3Anone%3B%20border%3Anone%3B%5Cn%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20color%3A%23666%3B%20font-size%3A18px%3B%20padding%3A2px%206px%3B%20%7D%5Cn%20%20%20%20%20%20%20%20%5Bhidden%5D%20%7B%20display%3Anone%20!important%3B%20%7D%5Cn%20%20%20%20%20%20%3C%2Fstyle%3E%5Cn%20%20%20%20%20%20%3Cdiv%20class%3D%22panel%22%20role%3D%22region%22%20aria-label%3D%22%24%7Bt%7D%22%3E%5Cn%20%20%20%20%20%20%20%20%3Cbutton%20class%3D%22close%22%20aria-label%3D%22Hide%20transcript%20panel%22%3E%C3%97%3C%2Fbutton%3E%5Cn%20%20%20%20%20%20%20%20%3Ch2%3E%24%7Bt%7D%3C%2Fh2%3E%5Cn%20%20%20%20%20%20%20%20%24%7Be%7D%5Cn%20%20%20%20%20%20%20%20%3Cdiv%20class%3D%22status%22%20role%3D%22status%22%20aria-live%3D%22polite%22%3E%3C%2Fdiv%3E%5Cn%20%20%20%20%20%20%3C%2Fdiv%3E%60%2Cr.querySelector(%22.close%22).addEventListener(%22click%22%2C()%3D%3En.style.display%3D%22none%22)%2Cdocument.body.appendChild(n)%3Bconst%20o%3Dr.querySelector(%22.status%22)%3Breturn%7Broot%3Ar%2CsetStatus%3At%3D%3Eo.textContent%3Dt%7D%7Dfunction%20b(t%2Ce)%7Breturn%20new%20Promise(n%3D%3E%7Bconst%20r%3Ddocument.createElement(%22iframe%22)%3Br.setAttribute(%22aria-hidden%22%2C%22true%22)%2Cr.tabIndex%3D-1%2Cr.style.cssText%3D%22position%3Afixed%3Bleft%3A-10000px%3Btop%3A0%3Bwidth%3A640px%3Bheight%3A360px%3Bborder%3A0%3Bvisibility%3Ahidden%3B%22%2Cr.src%3Dt%3Bconst%20s%3DDate.now()%3Blet%20i%3Dnull%3Bconst%20l%3Dt%3D%3E%7BclearInterval(c)%2Cr.remove()%2Cn(%7BplaylistUrl%3At%2Ctitle%3Ai%7D)%7D%2Cc%3DsetInterval(()%3D%3E%7Btry%7Bconst%20t%3Dr.contentWindow%3Bif(t)%7Bt.document.querySelectorAll(%22video%22).forEach(t%3D%3E%7Bt.muted%3D!0%2Ct.paused%7C%7Ct.pause()%7D)%2Ci%3Da(t)%7C%7Ci%3Bconst%20e%3Do(t)%3Bif(e%26%26(i%7C%7CDate.now()-s%3E4e3))return%20l(e)%7D%7Dcatch(t)%7B%7DDate.now()-s%3Ee%26%26l(null)%7D%2C400)%3Bdocument.body.appendChild(r)%7D)%7Dn%26%26function()%7Blet%20e%3Dnull%3Bconst%20n%3D%5B%5D%2Cr%3Dr%3D%3E%7B!e%26%26t.test(r)%26%26(e%3Dr%2Cn.splice(0).forEach(t%3D%3Et(r)))%7D%3Btry%7Bperformance.setResourceTimingBufferSize(5e3)%2Cnew%20PerformanceObserver(t%3D%3Et.getEntries().forEach(t%3D%3Er(t.name))).observe(%7Btype%3A%22resource%22%2Cbuffered%3A!0%7D)%7Dcatch(t)%7B%7Dlet%20s%3Dnull%3Bfunction%20i()%7Bconst%7Broot%3At%2CsetStatus%3Ai%7D%3Dy(%22Save%20transcript%22%2C'%3Cdiv%20class%3D%22row%22%3E%5Cn%20%20%20%20%20%20%20%20%20%20%20%3Cbutton%20class%3D%22txt%22%3EText%20(.txt)%3C%2Fbutton%3E%5Cn%20%20%20%20%20%20%20%20%20%20%20%3Cbutton%20class%3D%22vtt%20secondary%22%3ECaptions%20(.vtt)%3C%2Fbutton%3E%5Cn%20%20%20%20%20%20%20%20%20%3C%2Fdiv%3E')%2Cl%3D%5B...t.querySelectorAll(%22.row%20button%22)%5D%3Basync%20function%20p(t)%7Bl.forEach(t%3D%3Et.disabled%3D!0)%3Btry%7Bif(!s)%7Bi(%22Looking%20for%20this%20lecture's%20captions%E2%80%A6%22)%3Bconst%20t%3Dawait%20function()%7Bif(!e)%7Bconst%20t%3Do(window)%3Bt%26%26r(t)%7Dreturn%20e%3FPromise.resolve(e)%3Anew%20Promise(t%3D%3E%7Bn.push(t)%2CsetTimeout(()%3D%3Et(e)%2C15e3)%7D)%7D()%3Bif(!t)throw%20new%20Error(%22no%20captions%20found%20yet.%20Press%20play%20for%20a%20few%20seconds%20and%20try%20again.%20If%20this%20lecture%20has%20no%20captions%2C%20the%20Disability%20Resource%20Center%20can%20request%20them.%22)%3Bif(s%3Dawait%20c(t%2C(t%2Ce)%3D%3Ei(%60Downloading%20captions%20%24%7Bt%7D%20of%20%24%7Be%7D%E2%80%A6%60))%2C0%3D%3D%3Ds.length)throw%20new%20Error(%22the%20captions%20for%20this%20lecture%20are%20empty%22)%7Dconst%20l%3Da(window)%7C%7C%60UNITE%20lecture%20%24%7Bnew%20URLSearchParams(location.search).get(%22media_id%22)%7C%7C%22%22%7D%60.trim()%2Cp%3Df(l)%3Bif(%22txt%22%3D%3D%3Dt)%7Bconst%20t%3Dd(l%2Cs%2Ch(location.href))%3Bg(%60%24%7Bp%7D.txt%60%2Cnew%20Blob(%5Bt%5D%2C%7Btype%3A%22text%2Fplain%3Bcharset%3Dutf-8%22%7D))%7Delse%20g(%60%24%7Bp%7D.vtt%60%2Cnew%20Blob(%5Bu(s)%5D%2C%7Btype%3A%22text%2Fvtt%3Bcharset%3Dutf-8%22%7D))%3Bi(%60Saved%20%24%7Bs.length%7D%20caption%20lines.%60)%7Dcatch(t)%7Bi(%60Couldn't%20save%3A%20%24%7Bt.message%7D%60)%7Dfinally%7Bl.forEach(t%3D%3Et.disabled%3D!1)%7D%7Dt.querySelector(%22.txt%22).addEventListener(%22click%22%2C()%3D%3Ep(%22txt%22))%2Ct.querySelector(%22.vtt%22).addEventListener(%22click%22%2C()%3D%3Ep(%22vtt%22))%7Dwindow.__gtShowPanel%3D()%3D%3E%7Bconst%20t%3Ddocument.getElementById(%22gophertranscript-panel%22)%3Bt%3Ft.style.display%3D%22%22%3Ai()%7D%2C%22loading%22%3D%3D%3Ddocument.readyState%3Fdocument.addEventListener(%22DOMContentLoaded%22%2Ci)%3Ai()%7D()%2Cr%26%26function()%7Bfunction%20t()%7Bconst%20t%3Dnew%20Set%2Cn%3D%5B...document.querySelectorAll('a%5Bhref*%3D%22player.php%3Fmedia_id%3D%22%5D')%5D.filter(e%3D%3Ee.textContent.trim()%26%26!t.has(e.href)%26%26t.add(e.href)).map(t%3D%3E(%7Bhref%3At.href%2Clabel%3At.textContent.trim()%7D)).reverse()%3Bif(0%3D%3D%3Dn.length)return%3Bconst%20r%3Ddocument.title.replace(%2F%3A%5Cs*UNITE%20Videos%5Cs*%24%2Fi%2C%22%22).trim()%7C%7C%22UNITE%20course%22%2C%7Broot%3Ao%2CsetStatus%3Aa%7D%3Dy(%22Save%20all%20transcripts%22%2C%60%3Cdiv%20class%3D%22row%22%3E%5Cn%20%20%20%20%20%20%20%20%20%20%20%3Cbutton%20class%3D%22all%22%3ESave%20all%20%24%7Bn.length%7D%20lectures%20(.zip)%3C%2Fbutton%3E%5Cn%20%20%20%20%20%20%20%20%20%20%20%3Cbutton%20class%3D%22cancel%20secondary%22%20hidden%3EStop%3C%2Fbutton%3E%5Cn%20%20%20%20%20%20%20%20%20%3C%2Fdiv%3E%5Cn%20%20%20%20%20%20%20%20%20%3Clabel%3E%3Cinput%20type%3D%22checkbox%22%20class%3D%22withVtt%22%3E%20Also%20include%20.vtt%20caption%20files%3C%2Flabel%3E%60)%2Cs%3Do.querySelector(%22.all%22)%2Ci%3Do.querySelector(%22.cancel%22)%2Cl%3Do.querySelector(%22.withVtt%22)%3Blet%20p%3D!1%3Bi.addEventListener(%22click%22%2C()%3D%3E%7Bp%3D!0%2Ci.disabled%3D!0%2Ca(%22Stopping%20after%20this%20lecture%E2%80%A6%22)%7D)%2Cs.addEventListener(%22click%22%2Casync()%3D%3E%7Bp%3D!1%2Cs.disabled%3D!0%2Cl.disabled%3D!0%2Ci.hidden%3D!1%2Ci.disabled%3D!1%3Bconst%20t%3D%5B%5D%2Co%3D%5B%5D%3Blet%20m%3D0%3Bfor(let%20s%3D0%3Bs%3Cn.length%26%26!p%3Bs%2B%2B)%7Bconst%20i%3Dn%5Bs%5D%2Cg%3D%60Lecture%20%24%7Bs%2B1%7D%20of%20%24%7Bn.length%7D%20(%24%7Bi.label%7D)%60%3Ba(%60%24%7Bg%7D%3A%20opening%E2%80%A6%60)%3Btry%7Bconst%7BplaylistUrl%3Ae%2Ctitle%3An%7D%3Dawait%20b(i.href%2C2e4)%3Bif(!e)throw%20new%20Error(%22no%20captions%20found%22)%3Bconst%20o%3Dawait%20c(e%2C(t%2Ce)%3D%3Ea(%60%24%7Bg%7D%3A%20captions%20%24%7Bt%7D%20of%20%24%7Be%7D%E2%80%A6%60))%3Bif(0%3D%3D%3Do.length)throw%20new%20Error(%22captions%20are%20empty%22)%3Bconst%20p%3Dn%7C%7C%60%24%7Br%7D%20%24%7Bi.label%7D%60%2Cw%3D%60%24%7BString(s%2B1).padStart(2%2C%220%22)%7D%20%24%7Bf(p)%7D%60%3Bt.push(%7Bname%3A%60%24%7Bw%7D.txt%60%2Ctext%3Ad(p%2Co%2Ch(i.href))%7D)%2Cl.checked%26%26t.push(%7Bname%3A%60%24%7Bw%7D.vtt%60%2Ctext%3Au(o)%7D)%2Cm%2B%2B%7Dcatch(t)%7Bo.push(%60%24%7Bi.label%7D%3A%20%24%7Bt.message%7D%20(%24%7Bh(i.href)%7D)%60)%7Ds%3Cn.length-1%26%26!p%26%26await%20e(1e3)%7Dif(o.length%26%26t.push(%7Bname%3A%22_skipped%20lectures.txt%22%2Ctext%3A%22These%20lectures%20had%20no%20captions%20GopherTranscript%20could%20find.%5CnThe%20Disability%20Resource%20Center%20can%20request%20captions%20for%20them.%5Cn%5Cn%22%2Bo.join(%22%5Cn%22)%2B%22%5Cn%22%7D)%2Cm%3E0)%7Bconst%20e%3Dfunction(t%2Ce%3Dnew%20Date)%7Bconst%20n%3Dnew%20TextEncoder%2Cr%3De.getHours()%3C%3C11%7Ce.getMinutes()%3C%3C5%7CMath.floor(e.getSeconds()%2F2)%2Co%3DMath.max(e.getFullYear()-1980%2C0)%3C%3C9%7Ce.getMonth()%2B1%3C%3C5%7Ce.getDate()%2Ca%3D%5B%5D%2Cs%3D%5B%5D%3Blet%20i%3D0%3Bfor(const%20e%20of%20t)%7Bconst%20t%3Dn.encode(e.name)%2Cl%3Dn.encode(e.text)%2Cc%3Dw(l)%2Cd%3Dnew%20DataView(new%20ArrayBuffer(30))%3Bd.setUint32(0%2C67324752%2C!0)%2Cd.setUint16(4%2C20%2C!0)%2Cd.setUint16(6%2C2048%2C!0)%2Cd.setUint16(8%2C0%2C!0)%2Cd.setUint16(10%2Cr%2C!0)%2Cd.setUint16(12%2Co%2C!0)%2Cd.setUint32(14%2Cc%2C!0)%2Cd.setUint32(18%2Cl.length%2C!0)%2Cd.setUint32(22%2Cl.length%2C!0)%2Cd.setUint16(26%2Ct.length%2C!0)%2Cd.setUint16(28%2C0%2C!0)%2Ca.push(new%20Uint8Array(d.buffer)%2Ct%2Cl)%3Bconst%20p%3Dnew%20DataView(new%20ArrayBuffer(46))%3Bp.setUint32(0%2C33639248%2C!0)%2Cp.setUint16(4%2C20%2C!0)%2Cp.setUint16(6%2C20%2C!0)%2Cp.setUint16(8%2C2048%2C!0)%2Cp.setUint16(10%2C0%2C!0)%2Cp.setUint16(12%2Cr%2C!0)%2Cp.setUint16(14%2Co%2C!0)%2Cp.setUint32(16%2Cc%2C!0)%2Cp.setUint32(20%2Cl.length%2C!0)%2Cp.setUint32(24%2Cl.length%2C!0)%2Cp.setUint16(28%2Ct.length%2C!0)%2Cp.setUint32(42%2Ci%2C!0)%2Cs.push(new%20Uint8Array(p.buffer)%2Ct)%2Ci%2B%3D30%2Bt.length%2Bl.length%7Dconst%20l%3Ds.reduce((t%2Ce)%3D%3Et%2Be.length%2C0)%2Cc%3Dnew%20DataView(new%20ArrayBuffer(22))%3Bc.setUint32(0%2C101010256%2C!0)%2Cc.setUint16(8%2Ct.length%2C!0)%2Cc.setUint16(10%2Ct.length%2C!0)%2Cc.setUint32(12%2Cl%2C!0)%2Cc.setUint32(16%2Ci%2C!0)%3Bconst%20d%3D%5B...a%2C...s%2Cnew%20Uint8Array(c.buffer)%5D%2Cp%3Dnew%20Uint8Array(d.reduce((t%2Ce)%3D%3Et%2Be.length%2C0))%3Blet%20u%3D0%3Bfor(const%20t%20of%20d)p.set(t%2Cu)%2Cu%2B%3Dt.length%3Breturn%20p%7D(t)%3Bg(%60%24%7Bf(r)%7D%20transcripts.zip%60%2Cnew%20Blob(%5Be%5D%2C%7Btype%3A%22application%2Fzip%22%7D))%3Bconst%20s%3Do.length%3F%60%2C%20skipped%20%24%7Bo.length%7D%60%3A%22%22%3Ba(%60%24%7Bp%3F%22Stopped.%20%22%3A%22%22%7DSaved%20%24%7Bm%7D%20of%20%24%7Bn.length%7D%20lectures%24%7Bs%7D.%60)%7Delse%20a(p%3F%22Stopped%20before%20any%20lectures%20were%20saved.%22%3A%22Couldn't%20find%20captions%20for%20any%20lectures.%22)%3Bs.disabled%3D!1%2Cl.disabled%3D!1%2Ci.hidden%3D!0%7D)%7Dwindow.__gtShowPanel%3D()%3D%3E%7Bconst%20e%3Ddocument.getElementById(%22gophertranscript-panel%22)%3Be%3Fe.style.display%3D%22%22%3At()%7D%2C%22loading%22%3D%3D%3Ddocument.readyState%3Fdocument.addEventListener(%22DOMContentLoaded%22%2Ct)%3At()%7D()%7D)()%3B%3Bvoid%200" title="Drag this to your bookmarks bar">
+              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h10a1 1 0 0 1 1 1V18l-6-3.6L4 18V3.5a1 1 0 0 1 1-1Z" fill="#7a1530"/></svg>
+              GopherTranscript
+            </a>
+            <span class="marker-note" aria-hidden="true">
+              <svg width="26" height="26" viewBox="0 0 26 26"><path d="M4 22C8 14 14 8 21 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M14 4l7 1-2 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              drag me up there
+            </span>
+          </div>
+          <p class="click-hint" id="click-hint" role="status" aria-live="polite"></p>
+          <p class="small">Don't see a bookmarks bar? Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> on Windows or <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> on a Mac.</p>
+          <details>
+            <summary>Can't drag it? Add it by hand</summary>
+            <ol>
+              <li><button class="copy" type="button" id="copy">Copy bookmark code</button> <span id="copy-status" role="status" aria-live="polite"></span></li>
+              <li>Right-click your bookmarks bar and choose <strong>Add page…</strong> (Chrome, Edge) or <strong>Add Bookmark…</strong> (Firefox).</li>
+              <li>Name it <strong>GopherTranscript</strong>, paste the code into the URL field, and save.</li>
+            </ol>
+          </details>
+        </li>
+        <li>Go to <a href="https://media.unite.umn.edu/portal/index.php">your UNITE courses</a>, log in, and open a course.</li>
+        <li>Click <strong>GopherTranscript</strong> in your bookmarks bar. Press <strong>Save all</strong> for the whole course, or open a single lecture and click it there to save just that one.</li>
+      </ol>
+    </div>
+
+    <figure class="preview" style="margin:0">
+      <div class="mock-page" role="img" aria-label="Preview: a UNITE lecture list with the GopherTranscript panel in the bottom-right corner, partway through saving every lecture.">
+        <div class="mock-head">UNITE Lecture Videos</div>
+        <div class="mock-row"><div class="mock-thumb"></div><span>Wednesday November 4</span></div>
+        <div class="mock-row"><div class="mock-thumb"></div><span>Monday November 2</span></div>
+        <div class="mock-row"><div class="mock-thumb"></div><span>Friday October 30</span></div>
+        <div class="mock-row"><div class="mock-thumb"></div><span>Wednesday October 28</span></div>
+        <div class="mock-row"><div class="mock-thumb"></div><span>Monday October 26</span></div>
+        <div class="gt-panel" aria-hidden="true">
+          <span class="gt-close">×</span>
+          <h3>Save all transcripts</h3>
+          <div class="gt-row"><span class="gt-btn busy">Save all 23 lectures (.zip)</span><span class="gt-btn secondary">Stop</span></div>
+          <div class="gt-check"><span class="gt-box"></span> Also include .vtt caption files</div>
+          <div class="gt-status">Lecture 7 of 23 (Wednesday September 23): captions 4 of 13…</div>
+        </div>
+      </div>
+      <figcaption>What you'll see on a course page after clicking the bookmark.</figcaption>
+    </figure>
+  </section>
+
+  <section class="full" aria-labelledby="full-heading">
+    <h2 id="full-heading">The panel, up close</h2>
+    <p class="intro">The panel changes depending on which UNITE page you're on. You can close it with × and bring it back by clicking the bookmark again.</p>
+    <div class="states">
+      <div class="state">
+        <h3>On a course page</h3>
+        <p>Saves every lecture into one .zip, oldest first, numbered so they stay in order. A full semester takes a few minutes. <strong>Stop</strong> saves whatever is done so far.</p>
+        <div class="stage">
+          <div class="gt-panel" aria-hidden="true">
+            <span class="gt-close">×</span>
+            <h3>Save all transcripts</h3>
+            <div class="gt-row"><span class="gt-btn">Save all 23 lectures (.zip)</span></div>
+            <div class="gt-check"><span class="gt-box on"></span> Also include .vtt caption files</div>
+            <div class="gt-status">Saved 23 of 23 lectures.</div>
+          </div>
+        </div>
+      </div>
+      <div class="state">
+        <h3>On a single lecture</h3>
+        <p><strong>Text (.txt)</strong> gives a transcript in paragraphs with a timestamp at the start of each. <strong>Captions (.vtt)</strong> gives a caption file that works in VLC and most video players.</p>
+        <div class="stage">
+          <div class="gt-panel" aria-hidden="true">
+            <span class="gt-close">×</span>
+            <h3>Save transcript</h3>
+            <div class="gt-row"><span class="gt-btn">Text (.txt)</span><span class="gt-btn secondary">Captions (.vtt)</span></div>
+            <div class="gt-status">Saved 546 caption lines.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <div>
+      <h2>Privacy</h2>
+      <ul>
+        <li>Everything runs in your own browser, using the UNITE login you already have. It never sees your password.</li>
+        <li>It only talks to UNITE's caption server, the same one your video player uses. No tracking, no accounts.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Good to know</h2>
+      <ul>
+        <li>Transcripts come from auto-generated captions, so expect mistakes with names, math, and code.</li>
+        <li>They're for your own studying. Please don't post or share them; lectures belong to your instructors.</li>
+        <li>If it can't find captions, press play for a few seconds and click the bookmark again.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    <p>GopherTranscript is unofficial and not affiliated with the University of Minnesota or UNITE. If you need captions or transcripts as an accommodation, contact the Disability Resource Center.</p>
+    <p>Version 0.3.0. Made by Eric He. <a href="https://github.com/HeEric2007/GopherTranscript">Source on GitHub</a> (MIT license), where you'll also find a Chrome extension version that runs automatically.</p>
+  </footer>
+</main>
+
+<script>
+  (function () {
+    var link = document.getElementById("bookmarklet");
+    var hint = document.getElementById("click-hint");
+    link.addEventListener("click", function (e) {
+      e.preventDefault();
+      hint.textContent = "Drag the button to your bookmarks bar instead of clicking it here.";
+    });
+    var copyBtn = document.getElementById("copy");
+    var copyStatus = document.getElementById("copy-status");
+    copyBtn.addEventListener("click", function () {
+      var text = link.getAttribute("href");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(
+          function () { copyStatus.textContent = "Copied."; },
+          function () { copyStatus.textContent = "Couldn't copy. Right-click the gold button and choose Copy link address."; }
+        );
+      } else {
+        copyStatus.textContent = "Couldn't copy. Right-click the gold button and choose Copy link address.";
+      }
+    });
+  })();
+</script>
+</body>
+</html>

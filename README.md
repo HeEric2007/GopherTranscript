@@ -24,6 +24,12 @@ Files are named after the lecture, for example `CSCI 2033-1 November 4 Lecture (
 
 ## Install
 
+### Easiest: bookmarklet (no install)
+
+Go to **https://heeric2007.github.io/GopherTranscript/** and drag the gold **GopherTranscript** button onto your bookmarks bar. On any UNITE course or lecture page, click the bookmark and the panel appears. Works in Chrome, Edge, Safari, and Firefox.
+
+### Chrome extension (runs automatically)
+
 1. Download this repository (green **Code** button → **Download ZIP**) and unzip it.
 2. Open `chrome://extensions` in Chrome.
 3. Turn on **Developer mode** (top right).
@@ -49,6 +55,17 @@ If it says no captions were found, press play for a few seconds and try again.
 ## When it breaks
 
 UNITE uses Kaltura's video player. If they change how captions are loaded, the extension may stop finding them. Most fixes will be in `PLAYLIST_RE` and `waitForPlaylist` near the top of `content.js`. Please open an issue with the lecture page URL (without any `ks=` or token values) and what the panel said.
+
+## Building the bookmarklet
+
+`content.js` is the single source for both versions. After changing it, rebuild the bookmarklet and the install page:
+
+```
+npm install
+npm run build
+```
+
+This minifies `content.js` into `docs/bookmarklet.js` and writes `docs/index.html` from `docs/template.html`. Bump `version` in `manifest.json` for each release; the page shows it.
 
 ## Contributing
 

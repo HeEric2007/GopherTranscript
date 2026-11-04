@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GopherTranscript</title>
+<meta name="description" content="Save transcripts of your UNITE lecture videos, one lecture or a whole course at a time. Unofficial, for personal accessibility use.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --board: #f7f9fa;
+    --board-edge: #dfe4e8;
+    --surface: #ffffff;
+    --ink: #1c1f23;
+    --ink-soft: #4a525b;
+    --maroon: #7a1530;
+    --blue: #1f4fa0;
+    --gold: #f2b630;
+    --chrome: #e7ebef;
+    --chrome-line: #c9d0d7;
+    --focus: #1f4fa0;
+    --on-blue: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --board: #1b1f24; --board-edge: #2c333b; --surface: #232930; --ink: #eef1f4;
+      --ink-soft: #b4bdc6; --maroon: #f08aa3; --blue: #8fb4f5; --chrome: #2a3139;
+      --chrome-line: #3a434d; --focus: #8fb4f5; --on-blue: #12161a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --board: #1b1f24; --board-edge: #2c333b; --surface: #232930; --ink: #eef1f4;
+    --ink-soft: #b4bdc6; --maroon: #f08aa3; --blue: #8fb4f5; --chrome: #2a3139;
+    --chrome-line: #3a434d; --focus: #8fb4f5; --on-blue: #12161a;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--board); color: var(--ink);
+    font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+    font-size: 1.125rem; line-height: 1.6;
+  }
+  a { color: var(--blue); text-underline-offset: 0.15em; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+  kbd {
+    font: inherit; font-size: 0.92em; padding: 0.02em 0.4em; border-radius: 4px;
+    border: 1px solid var(--chrome-line); background: var(--chrome); white-space: nowrap;
+  }
+  .wrap { max-width: 72rem; margin: 0 auto; padding: 0 1rem; }
+
+  /* Header */
+  header.top { border-bottom: 1px solid var(--board-edge); background: var(--surface); }
+  header.top .wrap { display: flex; align-items: center; justify-content: space-between; min-height: 4.25rem; gap: 1rem; }
+  .brand { font-weight: 700; font-size: 1.3rem; color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; }
+  .source-link {
+    font-weight: 700; text-decoration: none; color: var(--on-blue); background: var(--blue);
+    padding: 0.5rem 1rem; border-radius: 6px; font-size: 1rem;
+  }
+
+  /* Hero */
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 3.5rem; align-items: start; padding: 3.5rem 0 4rem; }
+  h1 {
+    font-size: clamp(2.5rem, 5.4vw, 3.9rem); line-height: 1.04; letter-spacing: -0.02em;
+    margin: 0 0 1.1rem; color: var(--maroon); max-width: 13ch;
+  }
+  .lede { font-size: 1.28rem; line-height: 1.5; margin: 0 0 2.25rem; max-width: 32rem; }
+  h2 { font-size: 1.45rem; line-height: 1.25; margin: 0 0 1rem; }
+
+  ol.steps { list-style: none; counter-reset: step; padding: 0; margin: 0; }
+  ol.steps > li { counter-increment: step; position: relative; padding-left: 2.6rem; margin: 0 0 1.6rem; }
+  ol.steps > li::before {
+    content: counter(step); position: absolute; left: 0; top: 0.05rem;
+    width: 1.85rem; height: 1.85rem; border-radius: 50%;
+    background: var(--maroon); color: var(--board); font-weight: 700; font-size: 1rem;
+    display: grid; place-items: center;
+  }
+  .drag-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem 1rem; margin: 0.9rem 0 0.35rem; }
+  .bookmarklet {
+    display: inline-flex; align-items: center; gap: 0.55rem;
+    font-weight: 700; font-size: 1.2rem; text-decoration: none;
+    color: #1c1f23; background: var(--gold);
+    padding: 0.75rem 1.25rem 0.75rem 1rem; border-radius: 8px;
+    box-shadow: 0 3px 0 #b8861a; cursor: grab; user-select: none; -webkit-user-drag: element;
+  }
+  .bookmarklet:active { cursor: grabbing; }
+  .marker-note { font-family: "Caveat", cursive; font-size: 1.65rem; line-height: 1; color: var(--blue); display: inline-flex; align-items: center; gap: 0.3rem; }
+  .small { font-size: 1rem; color: var(--ink-soft); margin: 0.4rem 0 0; }
+  .click-hint { min-height: 1.5em; margin: 0.3rem 0 0; color: var(--maroon); font-weight: 700; font-size: 1rem; }
+
+  details { margin-top: 0.4rem; font-size: 1rem; }
+  summary { cursor: pointer; color: var(--blue); font-weight: 700; }
+  details ol { padding-left: 1.3rem; margin: 0.7rem 0 0; }
+  details li { margin-bottom: 0.45rem; }
+  .copy { font: inherit; font-weight: 700; color: var(--on-blue); background: var(--blue); border: 0; border-radius: 6px; padding: 0.4rem 0.9rem; cursor: pointer; }
+
+  /* Preview: a simplified UNITE lecture list with the panel open */
+  .preview {
+    background: var(--surface); border: 1px solid var(--board-edge); border-radius: 12px;
+    padding: 1.25rem; position: relative; box-shadow: 0 18px 40px -24px rgba(28, 31, 35, 0.45);
+  }
+  .preview figcaption { font-size: 0.95rem; color: var(--ink-soft); margin: 0.9rem 0 0; }
+  .mock-page { border-radius: 8px; overflow: hidden; border: 1px solid #c9ced3; background: #fff; color: #1c1f23; position: relative; min-height: 25rem; }
+  .mock-head { background: #6f1422; color: #fff; font-weight: 700; padding: 0.55rem 0.9rem; font-size: 1.05rem; }
+  .mock-row { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.9rem; align-items: center; padding: 0.55rem 0.9rem; border-bottom: 1px solid #e3e6e9; }
+  .mock-thumb { height: 3.6rem; border-radius: 3px; background: linear-gradient(180deg, #c9cdcf 0%, #b9bec1 78%, #6a6f73 79%, #8a8f92 100%); }
+  .mock-row span { color: #7a1530; text-decoration: underline; font-size: 1rem; }
+
+  /* The real panel, reused for the preview and the full view */
+  .gt-panel {
+    font: 14px/1.4 system-ui, -apple-system, sans-serif; background: #fff; color: #1a1a1a;
+    border: 1px solid #c9c9c9; border-radius: 10px; padding: 12px; width: 280px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.18); position: relative; text-align: left;
+  }
+  .gt-panel h3 { font-size: 14px; margin: 0 0 8px; }
+  .gt-row { display: flex; gap: 8px; }
+  .gt-btn { flex: 1; font: inherit; padding: 8px 6px; border-radius: 6px; border: 1px solid #7a0019; background: #7a0019; color: #fff; text-align: center; }
+  .gt-btn.secondary { background: #fff; color: #7a0019; }
+  .gt-btn.busy { opacity: .6; }
+  .gt-check { display: flex; gap: 6px; align-items: center; font-size: 13px; margin-top: 8px; }
+  .gt-box { width: 13px; height: 13px; border: 1px solid #767676; border-radius: 2px; display: inline-block; }
+  .gt-box.on { background: #1f6feb; border-color: #1f6feb; position: relative; }
+  .gt-box.on::after { content: ""; position: absolute; left: 3.5px; top: 0.5px; width: 3px; height: 7px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .gt-status { margin-top: 8px; font-size: 13px; color: #444; }
+  .gt-close { position: absolute; top: 4px; right: 10px; color: #666; font-size: 18px; }
+  .mock-page .gt-panel { position: absolute; right: 12px; bottom: 12px; }
+
+  /* Full view */
+  .full { border-top: 1px solid var(--board-edge); padding: 3.5rem 0 1rem; }
+  .full .intro { max-width: 40rem; margin: 0 0 2rem; }
+  .states { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem; }
+  .state { background: var(--surface); border: 1px solid var(--board-edge); border-radius: 12px; padding: 1.5rem; }
+  .state h3 { font-size: 1.2rem; margin: 0 0 0.35rem; }
+  .state p { margin: 0 0 1.25rem; max-width: 30rem; }
+  .state .stage { display: flex; justify-content: center; padding: 1.5rem 0.5rem; border-radius: 8px; background: var(--chrome); }
+
+  .notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.5rem; padding: 3rem 0 1rem; }
+  .notes ul { padding-left: 1.2rem; margin: 0; }
+  .notes li { margin-bottom: 0.55rem; }
+
+  footer { border-top: 1px solid var(--board-edge); margin-top: 2.5rem; padding: 1.5rem 0 3rem; font-size: 0.98rem; color: var(--ink-soft); }
+  footer p { max-width: 46rem; margin: 0 0 0.6rem; }
+
+  @media (max-width: 60rem) {
+    .hero { grid-template-columns: 1fr; gap: 2.5rem; padding-top: 2.5rem; }
+    h1 { max-width: none; }
+    .states, .notes { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 30rem) {
+    .mock-row { grid-template-columns: 4.5rem 1fr; }
+    .mock-thumb { height: 2.6rem; }
+    .mock-page .gt-panel { width: auto; left: 12px; }
+    .gt-panel { width: 100%; max-width: 280px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .bookmarklet { transition: transform 120ms ease; }
+    .bookmarklet:hover { transform: translateY(-2px); }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./">
+      <svg width="22" height="22" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h10a1 1 0 0 1 1 1V18l-6-3.6L4 18V3.5a1 1 0 0 1 1-1Z" fill="#7a1530"/><path d="M7 7h6M7 10h6M7 13h3" stroke="#f2b630" stroke-width="1.6" stroke-linecap="round"/></svg>
+      GopherTranscript
+    </a>
+    <a class="source-link" href="https://github.com/HeEric2007/GopherTranscript">View on GitHub</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div>
+      <h1>Save your UNITE lectures as text</h1>
+      <p class="lede">Get a readable transcript of any UNITE lecture video, or every lecture in a course in one download. Good for screen readers, text-to-speech, translation, and searching your notes.</p>
+
+      <h2>Get started</h2>
+      <ol class="steps">
+        <li>
+          Drag this button to your bookmarks bar:
+          <div class="drag-row">
+            <a class="bookmarklet" id="bookmarklet" href="__BOOKMARKLET_HREF__" title="Drag this to your bookmarks bar">
+              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h10a1 1 0 0 1 1 1V18l-6-3.6L4 18V3.5a1 1 0 0 1 1-1Z" fill="#7a1530"/></svg>
+              GopherTranscript
+            </a>
+            <span class="marker-note" aria-hidden="true">
+              <svg width="26" height="26" viewBox="0 0 26 26"><path d="M4 22C8 14 14 8 21 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M14 4l7 1-2 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              drag me up there
+            </span>
+          </div>
+          <p class="click-hint" id="click-hint" role="status" aria-live="polite"></p>
+          <p class="small">Don't see a bookmarks bar? Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> on Windows or <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> on a Mac.</p>
+          <details>
+            <summary>Can't drag it? Add it by hand</summary>
+            <ol>
+              <li><button class="copy" type="button" id="copy">Copy bookmark code</button> <span id="copy-status" role="status" aria-live="polite"></span></li>
+              <li>Right-click your bookmarks bar and choose <strong>Add page…</strong> (Chrome, Edge) or <strong>Add Bookmark…</strong> (Firefox).</li>
+              <li>Name it <strong>GopherTranscript</strong>, paste the code into the URL field, and save.</li>
+            </ol>
+          </details>
+        </li>
+        <li>Go to <a href="https://media.unite.umn.edu/portal/index.php">your UNITE courses</a>, log in, and open a course.</li>
+        <li>Click <strong>GopherTranscript</strong> in your bookmarks bar. Press <strong>Save all</strong> for the whole course, or open a single lecture and click it there to save just that one.</li>
+      </ol>
+    </div>
+
+    <figure class="preview" style="margin:0">
+      <div class="mock-page" role="img" aria-label="Preview: a UNITE lecture list with the GopherTranscript panel in the bottom-right corner, partway through saving every lecture.">
+        <div class="mock-head">UNITE Lecture Videos</div>
+        <div class="mock-row"><div class="mock-thumb"></div><span>Wednesday November 4</span></div>
+        <div class="mock-row"><div class="mock-thumb"></div><span>Monday November 2</span></div>
+        <div class="mock-row"><div class="mock-thumb"></div><span>Friday October 30</span></div>
+        <div class="mock-row"><div class="mock-thumb"></div><span>Wednesday October 28</span></div>
+        <div class="mock-row"><div class="mock-thumb"></div><span>Monday October 26</span></div>
+        <div class="gt-panel" aria-hidden="true">
+          <span class="gt-close">×</span>
+          <h3>Save all transcripts</h3>
+          <div class="gt-row"><span class="gt-btn busy">Save all 23 lectures (.zip)</span><span class="gt-btn secondary">Stop</span></div>
+          <div class="gt-check"><span class="gt-box"></span> Also include .vtt caption files</div>
+          <div class="gt-status">Lecture 7 of 23 (Wednesday September 23): captions 4 of 13…</div>
+        </div>
+      </div>
+      <figcaption>What you'll see on a course page after clicking the bookmark.</figcaption>
+    </figure>
+  </section>
+
+  <section class="full" aria-labelledby="full-heading">
+    <h2 id="full-heading">The panel, up close</h2>
+    <p class="intro">The panel changes depending on which UNITE page you're on. You can close it with × and bring it back by clicking the bookmark again.</p>
+    <div class="states">
+      <div class="state">
+        <h3>On a course page</h3>
+        <p>Saves every lecture into one .zip, oldest first, numbered so they stay in order. A full semester takes a few minutes. <strong>Stop</strong> saves whatever is done so far.</p>
+        <div class="stage">
+          <div class="gt-panel" aria-hidden="true">
+            <span class="gt-close">×</span>
+            <h3>Save all transcripts</h3>
+            <div class="gt-row"><span class="gt-btn">Save all 23 lectures (.zip)</span></div>
+            <div class="gt-check"><span class="gt-box on"></span> Also include .vtt caption files</div>
+            <div class="gt-status">Saved 23 of 23 lectures.</div>
+          </div>
+        </div>
+      </div>
+      <div class="state">
+        <h3>On a single lecture</h3>
+        <p><strong>Text (.txt)</strong> gives a transcript in paragraphs with a timestamp at the start of each. <strong>Captions (.vtt)</strong> gives a caption file that works in VLC and most video players.</p>
+        <div class="stage">
+          <div class="gt-panel" aria-hidden="true">
+            <span class="gt-close">×</span>
+            <h3>Save transcript</h3>
+            <div class="gt-row"><span class="gt-btn">Text (.txt)</span><span class="gt-btn secondary">Captions (.vtt)</span></div>
+            <div class="gt-status">Saved 546 caption lines.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="notes">
+    <div>
+      <h2>Privacy</h2>
+      <ul>
+        <li>Everything runs in your own browser, using the UNITE login you already have. It never sees your password.</li>
+        <li>It only talks to UNITE's caption server, the same one your video player uses. No tracking, no accounts.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Good to know</h2>
+      <ul>
+        <li>Transcripts come from auto-generated captions, so expect mistakes with names, math, and code.</li>
+        <li>They're for your own studying. Please don't post or share them; lectures belong to your instructors.</li>
+        <li>If it can't find captions, press play for a few seconds and click the bookmark again.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    <p>GopherTranscript is unofficial and not affiliated with the University of Minnesota or UNITE. If you need captions or transcripts as an accommodation, contact the Disability Resource Center.</p>
+    <p>Version __VERSION__. Made by Eric He. <a href="https://github.com/HeEric2007/GopherTranscript">Source on GitHub</a> (MIT license), where you'll also find a Chrome extension version that runs automatically.</p>
+  </footer>
+</main>
+
+<script>
+  (function () {
+    var link = document.getElementById("bookmarklet");
+    var hint = document.getElementById("click-hint");
+    link.addEventListener("click", function (e) {
+      e.preventDefault();
+      hint.textContent = "Drag the button to your bookmarks bar instead of clicking it here.";
+    });
+    var copyBtn = document.getElementById("copy");
+    var copyStatus = document.getElementById("copy-status");
+    copyBtn.addEventListener("click", function () {
+      var text = link.getAttribute("href");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(
+          function () { copyStatus.textContent = "Copied."; },
+          function () { copyStatus.textContent = "Couldn't copy. Right-click the gold button and choose Copy link address."; }
+        );
+      } else {
+        copyStatus.textContent = "Couldn't copy. Right-click the gold button and choose Copy link address.";
+      }
+    });
+  })();
+</script>
+</body>
+</html>

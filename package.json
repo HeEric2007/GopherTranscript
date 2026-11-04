@@ -1,0 +1,11 @@
+{
+  "name": "gophertranscript",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-bookmarklet.mjs"
+  },
+  "devDependencies": {
+    "terser": "^5.51.2"
+  }
+}
