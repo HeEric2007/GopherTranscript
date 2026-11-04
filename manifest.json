@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "GopherTranscript (unofficial)",
+  "version": "0.1.0",
+  "description": "Adds a button to UNITE lecture video pages that saves the video's captions as a readable transcript. Unofficial, for personal accessibility use.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://media.unite.umn.edu/portal/player.php*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+# Never commit lecture transcripts
+transcripts/
+*.vtt
+*.srt
+*.txt
+
+.DS_Store
+*.zip
