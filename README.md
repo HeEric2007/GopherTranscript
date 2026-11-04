@@ -8,9 +8,11 @@ Lecture videos at UMN have auto-generated captions, and the player shows a searc
 
 ## Install
 
-Go to **https://heeric2007.github.io/GopherTranscript/** and drag the gold **GopherTranscript** button onto your bookmarks bar.
+Go to **https://heeric2007.github.io/GopherTranscript/** and drag the gold **🐿️ GopherTranscript** button onto your bookmarks bar. The 🐿️ comes along as part of the bookmark's name, so it's easy to spot.
 
-If you can't drag it, that page has a **Copy bookmark code** button. Make a new bookmark, name it GopherTranscript, and paste the code in as the URL.
+If you can't drag it, that page has a **Copy bookmark code** button. Make a new bookmark, name it `🐿️ GopherTranscript`, and paste the code in as the URL.
+
+Already have the bookmark? You can just rename it to add the 🐿️.
 
 Works in Chrome, Edge, Safari, and Firefox on a computer.
 

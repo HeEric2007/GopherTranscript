@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GopherTranscript</title>
 <meta name="description" content="Save transcripts of your UNITE and Canvas lecture videos. Unofficial, for personal accessibility use.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%90%BF%EF%B8%8F%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Caveat:wght@600&display=swap" rel="stylesheet">
@@ -86,6 +87,7 @@
     box-shadow: 0 3px 0 #b8861a; cursor: grab; user-select: none; -webkit-user-drag: element;
   }
   .bookmarklet:active { cursor: grabbing; }
+  .bm-icon { font-size: 1.15em; line-height: 1; }
   .marker-note { font-family: "Caveat", cursive; font-size: 1.65rem; line-height: 1; color: var(--blue); display: inline-flex; align-items: center; gap: 0.3rem; }
   .small { font-size: 1rem; color: var(--ink-soft); margin: 0.4rem 0 0; }
   .click-hint { min-height: 1.5em; margin: 0.3rem 0 0; color: var(--maroon); font-weight: 700; font-size: 1rem; }
@@ -172,7 +174,7 @@
 <header class="top">
   <div class="wrap">
     <a class="brand" href="./">
-      <svg width="22" height="22" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h10a1 1 0 0 1 1 1V18l-6-3.6L4 18V3.5a1 1 0 0 1 1-1Z" fill="#7a1530"/><path d="M7 7h6M7 10h6M7 13h3" stroke="#f2b630" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="bm-icon" aria-hidden="true">🐿️</span>
       GopherTranscript
     </a>
     <a class="source-link" href="https://github.com/HeEric2007/GopherTranscript">View on GitHub</a>
@@ -191,9 +193,7 @@
           Drag this button to your bookmarks bar:
           <div class="drag-row">
             <a class="bookmarklet" id="bookmarklet" href="__BOOKMARKLET_HREF__" title="Drag this to your bookmarks bar">
-              <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h10a1 1 0 0 1 1 1V18l-6-3.6L4 18V3.5a1 1 0 0 1 1-1Z" fill="#7a1530"/></svg>
-              GopherTranscript
-            </a>
+<span class="bm-icon" aria-hidden="true">🐿️</span> GopherTranscript</a>
             <span class="marker-note" aria-hidden="true">
               <svg width="26" height="26" viewBox="0 0 26 26"><path d="M4 22C8 14 14 8 21 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M14 4l7 1-2 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
               drag me up there
@@ -206,7 +206,7 @@
             <ol>
               <li><button class="copy" type="button" id="copy">Copy bookmark code</button> <span id="copy-status" role="status" aria-live="polite"></span></li>
               <li>Right-click your bookmarks bar and choose <strong>Add page…</strong> (Chrome, Edge) or <strong>Add Bookmark…</strong> (Firefox).</li>
-              <li>Name it <strong>GopherTranscript</strong>, paste the code into the URL field, and save.</li>
+              <li>Name it <strong>🐿️ GopherTranscript</strong>, paste the code into the URL field, and save.</li>
             </ol>
           </details>
         </li>
