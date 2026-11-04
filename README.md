@@ -1,10 +1,10 @@
 # GopherTranscript (unofficial)
 
-A bookmarklet that saves transcripts of UNITE lecture videos, either one lecture at a time or every lecture in a course as a single .zip.
+A bookmarklet that saves transcripts of lecture videos on UNITE and Canvas. On UNITE it can also save every lecture in a course as a single .zip.
 
-UNITE videos have auto-generated captions, and the player shows a searchable transcript, but there's no way to download it. Having the transcript as a file makes it much easier to review lectures with a screen reader, text-to-speech, translation tools, or your own notes.
+Lecture videos at UMN have auto-generated captions, and the player shows a searchable transcript, but there's no way to download it. Having the transcript as a file makes it much easier to review lectures with a screen reader, text-to-speech, translation tools, or your own notes.
 
-> **Unofficial.** This project is not affiliated with, endorsed by, or supported by the University of Minnesota or UNITE. If you need captions or transcripts as a formal accommodation, contact the **Disability Resource Center**.
+> **Unofficial.** This project is not affiliated with, endorsed by, or supported by the University of Minnesota, UNITE, Canvas, or Kaltura. If you need captions or transcripts as a formal accommodation, contact the **Disability Resource Center**.
 
 ## Install
 
@@ -14,7 +14,7 @@ If you can't drag it, that page has a **Copy bookmark code** button. Make a new 
 
 Works in Chrome, Edge, Safari, and Firefox on a computer.
 
-## How to use it
+## Using it on UNITE
 
 1. Log in to UNITE and open one of your courses.
 2. Click **GopherTranscript** in your bookmarks bar. A panel appears in the bottom-right corner of the page.
@@ -33,13 +33,31 @@ Works in Chrome, Edge, Safari, and Firefox on a computer.
 
 Files are named after the lecture, for example `CSCI 2033-1 November 4 Lecture (multi-source).txt`.
 
-If you close the panel, click the bookmark again to bring it back. If it says it can't find captions, press play for a few seconds and try again.
+## Using it on Canvas
+
+This is for lecture videos embedded in Canvas pages, like a week's "Lecture Links" page. Canvas keeps each video in a protected frame that the bookmarklet can't read from the Canvas page itself, so it takes two clicks per video and there's no Save all.
+
+1. On the Canvas page with the video, click **GopherTranscript**. The panel lists the videos on that page.
+2. Press **Open video** next to the lecture you want. It opens by itself in a new tab.
+3. On that tab, click **GopherTranscript** again and press **Text (.txt)** or **Captions (.vtt)**.
+
+Files are named after the video, for example `PSY1001 F26_11-02-2026 Stress.txt`.
+
+If the panel says there are no videos, you're probably on a page without a video player. Open the page that has the lecture video and try again.
+
+## Tips
+
+- If you close the panel, click the bookmark again to bring it back.
+- If it says it can't find captions, press play for a few seconds and try again. Some videos have no captions at all.
+- Saving a transcript doesn't count as watching. It won't mark lecture attendance or complete in-video quizzes.
 
 ## How it works
 
-- UNITE uses Kaltura's video player, which loads each lecture's captions as WebVTT files in about 5-minute pieces. The bookmarklet finds the caption list the player requested, downloads the same pieces, joins them, and saves the result to your computer.
+- UNITE and Canvas both use Kaltura's video player.
+- On UNITE, the player loads each lecture's captions as WebVTT files in about 5-minute pieces. The bookmarklet finds the caption list the player requested, downloads the same pieces, and joins them.
 - **Save all** opens each lecture's page in a hidden frame, one at a time, just long enough for the player to load its captions. Videos stay paused and muted, and the frame is closed right after.
-- Everything runs in your browser using your existing UNITE login. It never sees your password and only talks to UNITE's caption server. There's no tracking.
+- On Canvas, the video opens on `kaf.canvas.umn.edu` (Kaltura's Canvas tool). The player's settings include a link to its caption file (SRT or WebVTT), which the bookmarklet downloads and converts.
+- Everything runs in your browser using the login you already have. It never sees your password and only downloads caption files your video player already uses. There's no tracking.
 - It pauses between requests so it doesn't put extra load on UNITE.
 
 ## Please use it responsibly
@@ -63,7 +81,12 @@ npm run build
 
 This minifies the script into `docs/bookmarklet.js` and generates the install page, `docs/index.html`, from `docs/template.html`. GitHub Pages serves the `docs` folder. Bump `version` in `package.json` for each release, since the install page shows it.
 
-If UNITE changes how captions load and the bookmarklet stops finding them, start with `PLAYLIST_RE` and `findPlaylistIn` near the top of `gophertranscript.js`. When reporting a problem, include the lecture page URL (leave out any `ks=` or token values) and what the panel said.
+If captions stop being found:
+
+- **UNITE:** start with `PLAYLIST_RE` and `findPlaylistIn` near the top of `gophertranscript.js`.
+- **Canvas:** start with `canvasVideos` (finding embedded videos) and `pickCaption` (choosing the caption track).
+
+When reporting a problem, include the page URL (leave out any `ks=` or token values) and what the panel said.
 
 ## License
 
